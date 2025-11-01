@@ -11,8 +11,8 @@ import {
   useFormState,
 } from "react-hook-form";
 
-import { Label } from "@/client/hud/component/label";
-import { cn } from "@/client/hud/utility/theme";
+import { Label } from "@/client/canvas/component/label";
+import { cn } from "@/client/canvas/utility/theme";
 
 const Form = FormProvider;
 

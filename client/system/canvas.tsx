@@ -1,7 +1,7 @@
 import type { Root } from 'react-dom/client'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import HUD from '@/client/hud'
+import Canvas from '@/client/canvas'
 import { type System } from '@/game'
 
 declare module '@/game' { interface Game { hud: Root } }
@@ -16,7 +16,7 @@ export const system: System = {
       game.hud ??= createRoot(window.document.getElementById('hud')!)
     }
 
-    game.hud.render((<StrictMode><HUD /></StrictMode>))
+    game.hud.render((<StrictMode><Canvas /></StrictMode>))
 
     console.debug('[client:render] initialized')
   },

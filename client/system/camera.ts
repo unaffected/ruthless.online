@@ -1,5 +1,5 @@
 import type { ObservablePoint } from 'pixi.js'
-import hud from '@/client/system/hud'
+import hud from '@/client/system/canvas'
 import player from '@/client/system/player'
 import { type System } from '@/game'
 

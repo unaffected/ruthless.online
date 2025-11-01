@@ -8,7 +8,7 @@ import map from '@/client/system/map'
 import network from '@/client/system/network'
 import player from '@/client/system/player'
 import prediction from '@/client/system/prediction'
-import hud from '@/client/system/hud'
+import hud from '@/client/system/canvas'
 
 export const systems: Systems = [
   hud,

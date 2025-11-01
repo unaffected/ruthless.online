@@ -1,7 +1,7 @@
 import { Application, type ApplicationOptions } from 'pixi.js'
 import { type System } from '@/game'
 import graphic from '@/client/system/graphic'
-import hud from '@/client/system/hud'
+import hud from '@/client/system/canvas'
 
 declare module '@/game' { 
   interface Game {

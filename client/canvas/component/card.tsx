@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@/client/hud/utility/theme";
+import { cn } from "@/client/canvas/utility/theme";
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
