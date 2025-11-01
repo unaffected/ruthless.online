@@ -104,10 +104,10 @@ export const system: System = {
     })
 
     game.sync = (connection: Connection) => {
-      const update = game.observers.get(connection)!()
+      const entities = game.observers.get(connection)!()
 
-      if (update && update.byteLength > 0) {
-        game.send(connection, packet.PACKET.SYNC, update)
+      if (entities && entities.byteLength > 0) {
+        game.send(connection, packet.PACKET.SYNC, entities)
       }
 
       game.send(connection, packet.PACKET.UPDATE, updateSerializer(game.query([
@@ -117,7 +117,9 @@ export const system: System = {
     }
   },
   tick: async (game) => {
-    game.connections.keys().forEach((connection) => { game.sync(connection) })
+    for (const connection of game.connections.keys()) {
+      game.sync(connection)
+    }
   }
 }
 
