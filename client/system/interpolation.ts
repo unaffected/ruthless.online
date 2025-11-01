@@ -42,8 +42,6 @@ export const system: System = {
     const entities = game.query([game.components.player])
 
     for (const entity of entities) {
-      if (entity === game.entity) continue
-
       const player = game.get(entity, 'player')
 
       if (!player) continue

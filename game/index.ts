@@ -26,6 +26,8 @@ export type System<O = any> = {
 export type Systems = Array<Systems | System<any>>
 
 export type Options = {
+  camera_speed?: number
+  camera_snap_threshold?: number
   framerate?: number
   input_throttle_rate?: number
   input_rate_limit?: number
