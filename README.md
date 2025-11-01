@@ -1,4 +1,4 @@
-# ['ruthless.online'](https://ruthless.online)
+# [`ruthless.online`](https://ruthless.online)
 
 To install dependencies:
 
