@@ -3,11 +3,7 @@ import { type System } from '@/game'
 import graphic from '@/client/system/graphic'
 import canvas from '@/client/system/canvas'
 
-declare module '@/game' { 
-  interface Game {
-    scene: Application
-  }
-}
+declare module '@/game' { interface Game { scene: Application }  }
 
 export const system: System<ApplicationOptions> = {
   id: 'client:scene' as const,

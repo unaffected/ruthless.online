@@ -16,7 +16,7 @@ export const system: System = {
 
     if (!player) return
 
-    if (game.prediction?.enabled && game.prediction.server_snapshot) {
+    if (game.prediction?.enabled && game.prediction.snapshot) {
       const server: any = {}
       
       for (const [name] of Object.entries(game.components)) {
@@ -29,7 +29,7 @@ export const system: System = {
         }
       }
       
-      game.prediction.server_snapshot = server
+      game.prediction.snapshot = server
       game.prediction.last_server_sequence = game.input.sequence
     } else if (game.prediction?.enabled) {
       const server: any = {}
@@ -44,7 +44,7 @@ export const system: System = {
         }
       }
       
-      game.prediction.server_snapshot = server
+      game.prediction.snapshot = server
     }
   }
 }

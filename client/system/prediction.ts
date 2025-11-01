@@ -18,29 +18,27 @@ declare module '@/game' {
   interface Game {
     prediction: {
       enabled: boolean
-      history: PredictionSnapshot[]
+      history: Prediction[]
       history_size: number
       last_server_sequence: number
       divergence_threshold: number
       interpolation_alpha: number
-      server_snapshot: ComponentSnapshot | null
+      snapshot: Snapshot | null
     }
   }
 }
 
-type ComponentSnapshot = {
-  [key: string]: Component<COMPONENT>
-}
+type Snapshot = { [key: string]: Component<COMPONENT> }
 
-type PredictionSnapshot = {
+type Prediction = {
+  components: Snapshot
+  input: State
   sequence: number
   timestamp: number
-  input: State
-  components: ComponentSnapshot
 }
 
-const snapshot = (game: Game, entity: number): ComponentSnapshot => {
-  const result: ComponentSnapshot = {}
+const snapshot = (game: Game, entity: number): Snapshot => {
+  const result: Snapshot = {}
   
   for (const [name] of Object.entries(game.components)) {
     const data = game.get(entity, name as COMPONENT)
@@ -53,13 +51,13 @@ const snapshot = (game: Game, entity: number): ComponentSnapshot => {
   return result
 }
 
-const restore = (game: Game, entity: number, snap: ComponentSnapshot): void => {
+const restore = (game: Game, entity: number, snap: Snapshot): void => {
   for (const [name, data] of Object.entries(snap)) {
     game.set(entity, name as COMPONENT, data)
   }
 }
 
-const divergence = (a: ComponentSnapshot, b: ComponentSnapshot): number => {
+const divergence = (a: Snapshot, b: Snapshot): number => {
   let total = 0
   
   for (const [component, data] of Object.entries(a)) {
@@ -79,8 +77,8 @@ const divergence = (a: ComponentSnapshot, b: ComponentSnapshot): number => {
   return total
 }
 
-const interpolate = (game: Game, entity: number, server: ComponentSnapshot, client: ComponentSnapshot, alpha: number): void => {
-  const result: ComponentSnapshot = {}
+const interpolate = (game: Game, entity: number, server: Snapshot, client: Snapshot, alpha: number): void => {
+  const result: Snapshot = {}
 
   for (const [name, serverData] of Object.entries(server)) {
     const clientData = client[name]
@@ -101,7 +99,7 @@ const interpolate = (game: Game, entity: number, server: ComponentSnapshot, clie
   restore(game, entity, result)
 }
 
-const rollback = (game: Game, entity: number, server: ComponentSnapshot, history: PredictionSnapshot[], lastSeq: number): void => {
+const rollback = (game: Game, entity: number, server: Snapshot, history: Prediction[], lastSeq: number): void => {
   restore(game, entity, server)
 
   const pending = history.filter(s => s.sequence > lastSeq)
@@ -122,7 +120,7 @@ export const system: System = {
       last_server_sequence: 0,
       divergence_threshold: game.option('prediction_error_threshold', 5.0),
       interpolation_alpha: 0.15,
-      server_snapshot: null,
+      snapshot: null,
     }
 
     game.on('client:controller:input', (data) => {
@@ -143,15 +141,15 @@ export const system: System = {
     console.debug('[client:prediction] initialized')
   },
   tick: async (game) => {
-    if (!game.prediction.enabled || !game.entity || !game.prediction.server_snapshot) return
+    if (!game.prediction.enabled || !game.entity || !game.prediction.snapshot) return
 
     const current = snapshot(game, game.entity)
-    const delta = divergence(game.prediction.server_snapshot, current)
+    const delta = divergence(game.prediction.snapshot, current)
 
     if (delta > game.prediction.divergence_threshold) {
-      console.debug(`[client:prediction] Large divergence: ${delta.toFixed(2)}, rolling back`)
+      console.warn(`[client:prediction] large divergence: ${delta.toFixed(2)}, rolling back`)
 
-      rollback(game, game.entity, game.prediction.server_snapshot, game.prediction.history, game.prediction.last_server_sequence)
+      rollback(game, game.entity, game.prediction.snapshot, game.prediction.history, game.prediction.last_server_sequence)
 
       game.emit('client:prediction:reconcile', {
         entity: game.entity,
@@ -159,10 +157,10 @@ export const system: System = {
         divergence: delta,
       })
     } else if (delta > 0.1) {
-      interpolate(game, game.entity, game.prediction.server_snapshot, current, game.prediction.interpolation_alpha)
+      interpolate(game, game.entity, game.prediction.snapshot, current, game.prediction.interpolation_alpha)
     }
 
-    game.prediction.server_snapshot = null
+    game.prediction.snapshot = null
   }
 }
 
