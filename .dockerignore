@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Development
+.git/
+.gitignore
+.env
+.env.*
+*.log
+
+# Build artifacts
+dist/
+build/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Tests
+*.test.ts
+*.spec.ts
+__tests__/
+test/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
