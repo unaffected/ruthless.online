@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@/client/utility/theme";
+import { cn } from "@/client/hud/utility/theme";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (

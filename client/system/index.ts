@@ -8,9 +8,10 @@ import map from '@/client/system/map'
 import network from '@/client/system/network'
 import player from '@/client/system/player'
 import prediction from '@/client/system/prediction'
-import render from '@/client/system/render'
+import hud from '@/client/system/hud'
 
 export const systems: Systems = [
+  hud,
   camera,
   controller,
   graphic,
@@ -20,7 +21,6 @@ export const systems: Systems = [
   network,
   player,
   prediction,
-  render,
 ]
 
 export default systems

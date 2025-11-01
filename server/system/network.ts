@@ -1,7 +1,7 @@
 import { createSnapshotSerializer, createObserverSerializer, createSoASerializer } from 'bitecs/serialization'
 import { type System } from '@/game'
 import * as packet from '@/game/utility/packet'
-import index from "@/client/index.html"
+import index from "@/client/hud/index.html"
 
 declare module '@/game/system/event' {
   interface Events {

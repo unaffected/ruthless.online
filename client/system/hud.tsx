@@ -4,11 +4,7 @@ import { createRoot } from 'react-dom/client'
 import HUD from '@/client/hud'
 import { type System } from '@/game'
 
-declare module '@/game' { 
-  interface Game {
-    hud: Root
-  }
-}
+declare module '@/game' { interface Game { hud: Root } }
 
 export const system: System = {
   id: 'client:render' as const,
