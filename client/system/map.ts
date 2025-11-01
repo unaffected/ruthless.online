@@ -1,5 +1,5 @@
 import { type System } from '@/game'
-import render from '@/client/system/render'
+import scene from '@/client/system/scene'
 import { Graphics } from 'pixi.js'
 
 declare module '@/game' { 
@@ -15,7 +15,7 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:map' as const,
-  dependencies: [render as unknown as System],
+  dependencies: [scene],
   install: async (game) => {
     game.map = {
       container: new Graphics(),

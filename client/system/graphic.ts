@@ -1,7 +1,6 @@
 import { type Game, type System } from '@/game'
 import type { Graphics as PixiGraphics, Sprite } from 'pixi.js'
 import graphics from '@/client/graphic'
-import network from '@/client/system/network'
 
 export type GRAPHIC = keyof Graphics
 
@@ -31,7 +30,7 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:graphic' as const,
-  dependencies: [network],
+  dependencies: [],
   install: async (game) => {
     game.graphics = new Map()
     
@@ -39,43 +38,41 @@ export const system: System = {
       registry: new Map(),
       
       spawn: (type, entity, options) => {
-        const def = game.graphic.registry.get(type)
+        const manager = game.graphic.registry.get(type)
         
-        if (!def) {
+        if (!manager) {
           console.warn(`[graphic] Graphic '${type}' not found`)
+
           return null as any
         }
         
-        const graphic = def.spawn(game, entity, options)
+        const graphic = manager.spawn(game, entity, options)
         
-        game.graphics.set(entity, {
-          type,
-          graphic,
-        })
+        game.graphics.set(entity, { type, graphic })
         
-        return graphic
+        return manager
       },
       
       despawn: (entity) => {
-        const entry = game.graphics.get(entity)
+        const manager = game.graphics.get(entity)
         
-        if (!entry) return
+        if (!manager) return
         
-        const def = game.graphic.registry.get(entry.type)
+        const graphic = game.graphic.registry.get(manager.type)
         
-        if (def?.despawn) {
-          def.despawn(game, entity, entry.graphic)
+        if (graphic?.despawn) {
+          graphic.despawn(game, entity, manager.graphic)
         }
         
         game.graphics.delete(entity)
       },
       
       tick: () => {
-        for (const [entity, entry] of game.graphics) {
-          const def = game.graphic.registry.get(entry.type)
+        for (const [entity, manager] of game.graphics) {
+          const graphic = game.graphic.registry.get(manager.type)
           
-          if (def?.tick) {
-            def.tick(game, entity, entry.graphic)
+          if (graphic?.tick) {
+            graphic.tick(game, entity, manager.graphic)
           }
         }
       }

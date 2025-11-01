@@ -15,7 +15,7 @@ export type Filter = {
   none?: Array<Components[COMPONENT]>
 }
 
-export type System<O extends object = {}> = {
+export type System<O = any> = {
   id: string
   install?: (this: Game, game: Game, options?: O) => Promise<void>
   tick?: (this: Game, game: Game, delta: number) => Promise<void>
