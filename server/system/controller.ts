@@ -23,7 +23,6 @@ declare module '@/game' {
     controller: {
       throttle_ms: number
       history: Map<Connection, number>
-      sequences: Map<number, number>
     }
   }
 }
@@ -35,7 +34,6 @@ export const system: System = {
     game.controller = {
       throttle_ms: game.option('input_rate_limit', 100 / game.option('framerate', 60)),
       history: new Map<Connection, number>(),
-      sequences: new Map<number, number>(),
     }
 
     game.on('server:player:input', (event) => {
@@ -61,23 +59,31 @@ export const system: System = {
       const view = new DataView((event.input as Buffer<ArrayBuffer>).buffer)
       const { state, sequence } = packet.input.decode(view)
 
-      game.controller.sequences.set(entity, sequence)
+      game.set(entity, 'input', {
+        packed: input.pack(state),
+        sequence,
+      })
 
       game.emit('server:controller:input', { connection: event.connection, entity, state, sequence })
-
-      game.action('move', entity, { input: state })
     })
 
     game.on('server:player:disconnected', (connection) => {
-      const entity = game.connections.get(connection)
-      
-      if (entity) {
-        game.controller.sequences.delete(entity)
-      }
-      
       game.controller.history.delete(connection)
     })
   },
+  tick: async (game) => {
+    const entities = game.query([game.components.input])
+    
+    for (const entity of entities) {
+      const inputComponent = game.get(entity, 'input')
+      
+      if (!inputComponent) continue
+      
+      const state = input.unpack(inputComponent.packed)
+      
+      game.action('move', entity, { input: state })
+    }
+  }
 }
 
 export default system

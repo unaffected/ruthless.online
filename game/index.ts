@@ -30,6 +30,7 @@ export type Options = {
   camera_snap_threshold?: number
   framerate?: number
   input_throttle_rate?: number
+  input_keepalive_rate?: number
   input_rate_limit?: number
   interpolation_enabled?: boolean
   interpolation_speed?: number

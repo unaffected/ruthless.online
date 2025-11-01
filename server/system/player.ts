@@ -10,6 +10,7 @@ export const system: System = {
       const entity = game.connections.get(connection)!
 
       game.add(entity, 'sync')
+      game.add(entity, 'input', { packed: 0, sequence: 0 })
       game.add(entity, 'player', { 
         health_current: 100.00, 
         health_max: 100.0, 

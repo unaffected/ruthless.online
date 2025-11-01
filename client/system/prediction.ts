@@ -128,15 +128,11 @@ export const system: System = {
     game.on('client:controller:input', (data) => {
       if (!game.prediction.enabled || !game.entity) return
 
-      const preAction = snapshot(game, game.entity)
-
-      game.action('move', game.entity, { input: game.input.state })
-
       game.prediction.history.push({
         sequence: data.sequence,
         timestamp: performance.now(),
         input: { ...game.input.state },
-        components: preAction,
+        components: snapshot(game, game.entity),
       })
 
       if (game.prediction.history.length > game.prediction.history_size) {
