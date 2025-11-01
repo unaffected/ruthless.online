@@ -1,10 +1,6 @@
 import { type System } from '@/game'
 import network from '@/client/system/network'
 
-declare module '@/game/system/event' {
-  interface Events {}
-}
-
 export const system: System = {
   id: 'client:player' as const,
   dependencies: [network],

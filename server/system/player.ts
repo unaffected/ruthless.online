@@ -2,14 +2,6 @@ import { type System } from '@/game'
 import { PACKET } from '@/game/utility/packet'
 import network from '@/server/system/network'
 
-declare module '@/game/system/event' {
-  interface Events {}
-}
-
-declare module '@/game' { 
-  interface Game {}
-}
-
 export const system: System = {
   id: 'server:player' as const,
   dependencies: [network],

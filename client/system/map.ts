@@ -2,10 +2,6 @@ import { type System } from '@/game'
 import render from '@/client/system/render'
 import { Graphics } from 'pixi.js'
 
-declare module '@/game/system/event' {
-  interface Events {}
-}
-
 declare module '@/game' { 
   interface Game {
     map: {

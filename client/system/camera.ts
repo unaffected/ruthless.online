@@ -1,11 +1,6 @@
 import type { ObservablePoint } from 'pixi.js'
-import * as ecs from 'bitecs'
 import player from '@/client/system/player'
 import { type System } from '@/game'
-
-declare module '@/game/system/event' {
-  interface Events {}
-}
 
 declare module '@/game' { 
   interface Game {
