@@ -1,5 +1,5 @@
 import type { ObservablePoint } from 'pixi.js'
-import hud from '@/client/system/canvas'
+import canvas from '@/client/system/canvas'
 import player from '@/client/system/player'
 import { type System } from '@/game'
 
@@ -14,7 +14,7 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:camera' as const,
-  dependencies: [hud, player],
+  dependencies: [canvas, player],
   install: async (game) => {
     game.camera = {
       x: 0, y: 0,

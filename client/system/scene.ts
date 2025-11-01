@@ -1,7 +1,7 @@
 import { Application, type ApplicationOptions } from 'pixi.js'
 import { type System } from '@/game'
 import graphic from '@/client/system/graphic'
-import hud from '@/client/system/canvas'
+import canvas from '@/client/system/canvas'
 
 declare module '@/game' { 
   interface Game {
@@ -11,7 +11,7 @@ declare module '@/game' {
 
 export const system: System<ApplicationOptions> = {
   id: 'client:scene' as const,
-  dependencies: [graphic, hud],
+  dependencies: [graphic, canvas],
   install: async (game, options) => {
     game.scene ??= new Application()
 
