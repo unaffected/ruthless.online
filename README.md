@@ -2,10 +2,8 @@
 
 I'd recommend looking at `./game/index.ts` first. This is the core of the engine. It exposes the following core functionality:
 
-- ECS Engine: Provided by [bitECS](). Uses bitpacked SoAs and provides a binary codec.
+- ECS Engine: Provided by [bitECS](https://github.com/NateTheGreatt/bitECS). Uses bitpacked SoAs and provides a binary codec.
   - `spawn`, `despawn`, `add`, `get`, etc.
-- Event System: Internal event bus used to communicate between systems
-  - `emit`, `on`, `off`, `once`
 - Plugin System: Used to install additional systems.
   - `install`, `make`
 
