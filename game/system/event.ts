@@ -42,27 +42,36 @@ export const system: System = {
     game.subscriptions = []
 
     game.emit = <T extends Event>(event: T, data?: Data<T>) => {
-      const triggers = game.subscriptions.map((subscription, idx) => {
-        if (subscription.type.toLowerCase() !== event.toLowerCase()) {
-          return false
+      const type = event.toLowerCase()
+      const triggers: Promise<void>[] = []
+      
+      for (let idx = 0; idx < game.subscriptions.length; idx++) {
+        const subscription = game.subscriptions[idx]!
+        
+        if (subscription.type.toLowerCase() !== type) {
+          continue
         }
 
-        game.subscriptions[idx]!.invocations = (subscription.invocations ?? 0) + 1
+        subscription.invocations = (subscription.invocations ?? 0) + 1
 
-        if (subscription.options?.limit && game.subscriptions[idx]!.invocations >= subscription.options.limit) {
+        if (subscription.options?.limit && subscription.invocations >= subscription.options.limit) {
           game.off(event, subscription.execute)
         }
 
-        return new Promise(async (resolve, reject) => {
-          try {
-            resolve(await subscription.execute(data as Data<T>))
-          } catch (error) {
-            reject(error)
-          }
-        })
-      }).filter(Boolean)
+        triggers.push(
+          new Promise(async (resolve, reject) => {
+            try {
+              resolve(await subscription.execute(data as Data<T>))
+            } catch (error) {
+              reject(error)
+            }
+          })
+        )
+      }
 
-      Promise.all(triggers).catch(() => {})
+      if (triggers.length > 0) {
+        Promise.all(triggers).catch(() => {})
+      }
 
       return game
     }

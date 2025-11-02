@@ -105,7 +105,7 @@ export const system: System = {
     game.on('server:player:disconnected', (connection) => {
       const entity = game.connections.get(connection)
 
-      if (!entity) return
+      if (entity === undefined) return
 
       game.grid.remove(entity)
     })

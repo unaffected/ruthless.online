@@ -124,7 +124,7 @@ export const system: System = {
     }
 
     game.on('client:controller:input', (data) => {
-      if (!game.prediction.enabled || !game.entity) return
+      if (!game.prediction.enabled || !game.active_player()) return
 
       game.prediction.history.push({
         sequence: data.sequence,
@@ -139,7 +139,7 @@ export const system: System = {
     })
   },
   tick: async (game) => {
-    if (!game.prediction.enabled || !game.entity || !game.prediction.snapshot) return
+    if (!game.prediction.enabled || !game.active_player() || !game.prediction.snapshot) return
 
     const current = snapshot(game, game.entity)
     const delta = divergence(game.prediction.snapshot, current)

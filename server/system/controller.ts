@@ -38,15 +38,15 @@ export const system: System = {
 
     game.on('server:player:disconnected', (connection) => { game.controller.history.delete(connection) })
 
-    game.on('server:player:input', (event) => {
+    game.on('server:player:input', (event) => {      
       const now = Date.now()
       const entity = game.connections.get(event.connection)
 
-      if (!entity) {
+      if (entity === undefined) {
         console.warn('[server:controller] received input from unknown connection')
         return
       }
-
+      
       const last = game.controller.history.get(event.connection) ?? 0
       const elapsed = now - last
 
@@ -60,22 +60,24 @@ export const system: System = {
 
       const view = new DataView((event.input as Buffer<ArrayBuffer>).buffer)
       const { state, sequence } = packet.input.decode(view)
-
+      
       game.set(entity, 'input', { packed: input.pack(state), sequence })
 
       game.emit('server:controller:input', { connection: event.connection, entity, state, sequence })
     })
   },
   tick: async (game) => {
+    if (game.connections.size === 0) return
+    
     const entities = game.query([game.components.input])
     
     for (const entity of entities) {
-      const inputComponent = game.get(entity, 'input')
+      const component = game.get(entity, 'input')
       
-      if (!inputComponent) continue
+      if (!component) continue
       
-      const state = input.unpack(inputComponent.packed)
-      
+      const state = input.unpack(component.packed)
+
       game.action('move', entity, state)
     }
   }

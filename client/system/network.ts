@@ -25,6 +25,7 @@ export const system: System = {
 
     game.socket.addEventListener('open', () => {
       game.emit('client:player:connected', game.socket)
+
       console.debug('[client:network] connected to server')
     })
 
@@ -36,8 +37,8 @@ export const system: System = {
       const buffer = new Uint8Array(event.data)
       const packet_type = buffer[0]!
       const data = buffer.slice(1).buffer
-      
       const packet = game.packet.types.get(packet_type)
+      
       if (packet) {
         packet.decode(game, data, entities)
       } else {

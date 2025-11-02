@@ -1,16 +1,26 @@
 import { type System } from '@/game'
 import network from '@/client/system/network'
 
+declare module '@/game' { 
+  interface Game {
+    active_player: () => boolean
+    is_local_player: (entity: number) => boolean
+  }
+}
+
 export const system: System = {
   id: 'client:player' as const,
   dependencies: [network],
   install: async (game) => {
+    game.active_player = () => (typeof game.entity === 'number')
+    game.is_local_player = (entity) => (game.active_player() && entity === game.entity)
+
     game.on('client:player:connected', () => {
       console.debug('[client:player] connected to server')
     })
   },
   tick: async (game) => {
-    if (!game.entity) return
+    if (!game.active_player()) return
 
     if (game.prediction?.enabled && game.prediction.snapshot) {
       const server: any = {}

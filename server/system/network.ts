@@ -122,22 +122,23 @@ export const system: System = {
 
   },
   tick: async (game) => {
-    if (game.frame % 3 !== 0) return
+    if (game.frame % 3 !== 0 || game.connections.size === 0) return
 
     for (const [connection, entity] of game.connections) {
-      const entities = game.observers.get(connection)!()
+      const observer = game.observers.get(connection)
+      
+      if (!observer) continue
+      
+      const entities = observer()
 
       if (entities && entities.byteLength > 0) {
         const buffer = new Uint8Array(entities.byteLength + 1)
-
         buffer[0] = PACKET.ENTITIES
         buffer.set(new Uint8Array(entities), 1)
-
         connection.send(buffer.buffer)
       }
 
       const position = game.get(entity, 'position')
-
       const nearby = position ? game.grid.load(position.x, position.y) : [entity]
 
       game.emit('server:network:sync', { connection, entity, nearby })

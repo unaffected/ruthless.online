@@ -6,7 +6,7 @@ export const system: System = {
   dependencies: [controller],
   install: async (game) => {
     game.on('client:controller:tick', () => {
-      if (!game.entity) return
+      if (typeof game.entity !== 'number') return
 
       game.action('move', game.entity, game.input.state)
     })

@@ -8,12 +8,12 @@ export type MoveAction = State
 export const action: Action<'move'> = {
   id: 'move',
   execute: (game, entity, params) => {
-    const position = game.get(entity, 'position')
-    const velocity = game.get(entity, 'velocity')
-    const movement = game.get(entity, 'movement')
-    
+    const position = game.get(entity, 'position')!
+    const velocity = game.get(entity, 'velocity')!
+    const movement = game.get(entity, 'movement')!
+
     if (!position || !velocity || !movement) return
-        
+    
     let vx = 0
     let vy = 0
     
@@ -32,13 +32,12 @@ export const action: Action<'move'> = {
     vx *= movement.speed
     vy *= movement.speed
 
-    position.x += vx
-    position.y += vy
-    velocity.x = vx
-    velocity.y = vy
-    
-    game.set(entity, 'position', position)
-    game.set(entity, 'velocity', velocity)
+    game.set(entity, 'velocity', { x: vx, y: vy })
+
+    game.set(entity, 'position', { 
+      x: position.x + vx, 
+      y: position.y + vy 
+    })
   }
 }
 

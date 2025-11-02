@@ -9,7 +9,7 @@ export type PlayerGraphic = { color?: number }
 export const graphic: Graphic<'player'> = {
   id: 'player',
   spawn: (game: Game, entity: number, options) => {
-    const color = options?.color ?? (entity === game.entity ? 0xB4A1FF : 0xFFA1FF)
+    const color = options?.color ?? game.is_local_player(entity) ? 0xB4A1FF : 0xFFA1FF
     
     const graphics = new Graphics()
       .circle(24, 24, 24)
@@ -19,7 +19,7 @@ export const graphic: Graphic<'player'> = {
     graphics.pivot.set(graphics.width / 2, graphics.height / 2)
     graphics.origin.set(graphics.width / 2, graphics.height / 2)
 
-    if (entity === game.entity) {
+    if (game.is_local_player(entity)) {
       graphics.position.set(window.innerWidth / 2, window.innerHeight / 2)
     }
 

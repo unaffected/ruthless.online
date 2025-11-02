@@ -81,6 +81,8 @@ export const system: System = {
     game.on('game:despawned', (entity) => { game.collider.despawn(entity)})
   },
   tick: async (game) => {
+    if (game.collider.bodies.size === 0) return
+    
     const entities = game.query([game.components.collider])
     
     for (const entity of entities) {

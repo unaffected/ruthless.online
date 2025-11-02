@@ -15,10 +15,12 @@ export const packet: PacketDefinition<'connected'> = {
 
     return buffer
   },
-  deserializer: (game) => (data) => {
-    game.entity = new DataView(data).getUint32(0, true)
+  deserializer: (game) => (data, entity_map) => {
+    const server_entity = new DataView(data).getUint32(0, true)
+    const client_entity = game.spawn()
     
-    console.debug(`[client:network] connection accepted: #${game.entity}`)
+    entity_map.set(server_entity, client_entity)
+    game.entity = client_entity
   },
 }
 

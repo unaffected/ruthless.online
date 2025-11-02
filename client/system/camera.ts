@@ -20,14 +20,18 @@ declare module '@/game' {
 export const system: System = {
   id: 'client:camera' as const,
   dependencies: [canvas, player],
-  install: async (game) => {
+  options: {
+    speed: 0.2,
+    snap_threshold: 0.5,
+  },
+  install: async (game, options) => {
     game.camera = {
       x: 0, 
       y: 0,
       target_x: 0,
       target_y: 0,
-      speed: game.option('camera_speed', 0.2),
-      snap_threshold: game.option('camera_snap_threshold', 0.5),
+      speed: options.speed,
+      snap_threshold: options.snap_threshold,
       center: () => game.scene.stage.position.set(
         window.innerWidth / 2 - game.camera.x,
         window.innerHeight / 2 - game.camera.y,
@@ -35,6 +39,8 @@ export const system: System = {
     }
   },
   tick: async (game) => {
+    if (game.entity === undefined || game.entity === null) return
+    
     const position = game.get(game.entity, 'position')
 
     if (!position) return
@@ -44,6 +50,7 @@ export const system: System = {
 
     const dx = game.camera.target_x - game.camera.x
     const dy = game.camera.target_y - game.camera.y
+
     const distance = Math.sqrt(dx * dx + dy * dy)
 
     if (distance < game.camera.snap_threshold) {
