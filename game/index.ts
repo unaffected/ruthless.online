@@ -68,7 +68,7 @@ export class Game {
     this.id = Math.random().toString(36).substring(2, 15)
     this.world = ecs.createWorld()
     this.options = options
-    this.options.framerate ??= 30
+    this.options.framerate ??= 60
   }
 
   public add<C extends keyof Components>(entity: number, name: C, attributes?: Component<C>): Game {

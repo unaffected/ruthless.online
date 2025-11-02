@@ -94,7 +94,7 @@ export const system: System = {
           game.connections.set(connection, entity)
           game.observers.set(connection, createObserverSerializer(game.world, game.components.sync, components))
 
-          game.sync(connection)
+          game.send(connection, packet.PACKET.SNAPSHOT, snapshotSerializer())
 
           game.emit('server:player:connected', connection)
 
@@ -117,6 +117,8 @@ export const system: System = {
     }
   },
   tick: async (game) => {
+    if (game.frame % 2 !== 0) return
+
     for (const connection of game.connections.keys()) {
       game.sync(connection)
     }

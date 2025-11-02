@@ -1,6 +1,7 @@
 import type { Game } from '@/game'
-import { type Collider, SHAPE } from '@/game/system/collider'
-import * as Matter from 'matter-js'
+import type { Collider } from '@/game/system/collider'
+import { SHAPE } from '@/game/component/collider'
+import Matter from 'matter-js'
 
 declare module '@/game/system/collider' { 
   interface Colliders { 

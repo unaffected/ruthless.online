@@ -1,5 +1,5 @@
 import { type Game, type System } from '@/game'
-import * as Matter from 'matter-js'
+import Matter from 'matter-js'
 import colliders from '@/game/collider'
 
 declare module '@/game' { 
@@ -17,11 +17,6 @@ declare module '@/game' {
 export type COLLIDER = keyof Colliders
 
 export interface Colliders {}
-
-export const SHAPE = {
-  CIRCLE: 0,
-  BOX: 1,
-} as const
 
 export type Collider<K extends COLLIDER = COLLIDER> = {
   id: K
@@ -78,8 +73,8 @@ export const system: System = {
     }
 
     colliders.forEach((collider) => { 
-      game.collider.registry.set(collider.id, collider)
-      game.collider.types.set(collider.type, collider)
+      game.collider.registry.set(collider.id, collider as Collider)
+      game.collider.types.set(collider.type, collider as Collider)
     })
   },
   tick: async (game) => {

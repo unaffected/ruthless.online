@@ -14,7 +14,7 @@ export const system: System = {
       game.add(entity, 'player', { 
         health_current: 100.00, 
         health_max: 100.0, 
-        movement_speed: 12.0,
+        movement_speed: 6.0,
         position_x: 50.0,
         position_y: 25.0,
         velocity_x: 0.0,
