@@ -43,7 +43,6 @@ export type System<O = any> = {
 export type Systems = Array<Systems | System<any>>
 
 export type Options = {
-  entity_version_bits?: number
   camera_speed?: number
   camera_snap_threshold?: number
   capacity?: number
