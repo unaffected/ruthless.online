@@ -3,11 +3,7 @@ import type { Collider } from '@/game/system/collider'
 import { SHAPE } from '@/game/component/collider'
 import Matter from 'matter-js'
 
-declare module '@/game/system/collider' { 
-  interface Colliders { 
-    circle: CircleCollider 
-  } 
-}
+declare module '@/game/system/collider' { interface Colliders { circle: CircleCollider } }
 
 export type CircleCollider = {
   radius: number
