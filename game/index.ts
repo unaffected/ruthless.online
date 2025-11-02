@@ -24,11 +24,6 @@ export type Filter = {
   none?: Array<COMPONENT>
 }
 
-export const ENTITY_INDEX_BITS = 20
-export const ENTITY_VERSION_BITS = 12
-export const ENTITY_MAX_INDEX = (1 << ENTITY_INDEX_BITS) - 1
-export const ENTITY_MAX_VERSION = (1 << ENTITY_VERSION_BITS) - 1
-
 export type Entities = {
   capacity: number
   count: number
@@ -72,6 +67,11 @@ export type Options = {
   prediction_error_threshold?: number
   prediction_buffer_size?: number
 }
+
+export const ENTITY_INDEX_BITS = 20
+export const ENTITY_VERSION_BITS = 12
+export const ENTITY_MAX_INDEX = (1 << ENTITY_INDEX_BITS) - 1
+export const ENTITY_MAX_VERSION = (1 << ENTITY_VERSION_BITS) - 1
 
 export class Game {
   public readonly id: string
