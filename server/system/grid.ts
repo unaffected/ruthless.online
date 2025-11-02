@@ -109,6 +109,8 @@ export const system: System = {
 
       game.grid.remove(entity)
     })
+    
+    game.on('game:despawned', (entity) => { game.grid.remove(entity) })
   },
   
   tick: async (game) => {

@@ -44,6 +44,10 @@ export const system: System = {
     game.on('server:player:disconnected', (connection) => {
       game.delta.states.delete(connection)
     })
+    
+    game.on('game:despawned', (entity) => {
+      for (const entities of game.delta.states.values()) entities.delete(entity)
+    })
   }
 }
 

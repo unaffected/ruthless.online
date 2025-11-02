@@ -1,6 +1,7 @@
 import { type Game, type System } from '@/game'
 import type { Graphics as PixiGraphics, Sprite } from 'pixi.js'
 import graphics from '@/client/graphic'
+import event from '@/game/system/event'
 
 export type GRAPHIC = keyof Graphics
 
@@ -30,7 +31,7 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:graphic' as const,
-  dependencies: [],
+  dependencies: [event],
   install: async (game) => {
     game.graphics = new Map()
     
@@ -79,6 +80,8 @@ export const system: System = {
     }
 
     graphics.forEach((graphic) => { game.graphic.registry.set(graphic.id, graphic) })
+    
+    game.on('game:despawned', (entity) => { game.graphic.despawn(entity) })
   }
 }
 

@@ -18,7 +18,7 @@ export type Filter = {
 export type System<O = any> = {
   id: string
   install?: (this: Game, game: Game, options?: O) => Promise<void>
-  tick?: (this: Game, game: Game, delta: number) => Promise<void>
+  tick?: (this: Game, game: Game, delta: number, options: O) => Promise<void>
   dependencies?: Array<System>
   options?: O
 }
@@ -98,6 +98,8 @@ export class Game {
   public flush(): Game {
     for (const entity of this.query([this.components.despawned])) {
       ecs.removeEntity(this.world, entity)
+      
+      this.emit('game:despawned', entity)
     }
 
     return this
@@ -248,7 +250,7 @@ export class Game {
     this.frame++
 
     for (let i = 0; i < this.systems.length; i++) {
-      this.systems[i]!.tick?.call(this, this, delta)
+      this.systems[i]!.tick?.call(this, this, delta, this.systems[i]!.options)
     }
   }
 }

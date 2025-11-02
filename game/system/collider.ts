@@ -1,5 +1,6 @@
 import { type Game, type System } from '@/game'
 import Matter from 'matter-js'
+import event from '@/game/system/event'
 import colliders from '@/game/collider'
 
 declare module '@/game' { 
@@ -28,7 +29,7 @@ export type Collider<K extends COLLIDER = COLLIDER> = {
 
 export const system: System = {
   id: 'game:collider' as const,
-  dependencies: [],
+  dependencies: [event],
   install: async (game) => {
     game.collider = {
       bodies: new Map(),
@@ -76,6 +77,8 @@ export const system: System = {
       game.collider.registry.set(collider.id, collider as Collider)
       game.collider.types.set(collider.type, collider as Collider)
     })
+    
+    game.on('game:despawned', (entity) => { game.collider.despawn(entity)})
   },
   tick: async (game) => {
     const entities = game.query([game.components.collider])
