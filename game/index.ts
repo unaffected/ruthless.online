@@ -119,14 +119,33 @@ export class Game {
   }
 
   public query(query: Filter|Array<Components[COMPONENT]>) {
-    if (Array.isArray(query)) {
+    if (Array.isArray(query) && query.includes(this.components.despawned)) {
       return ecs.query(this.world, query)
     }
 
+    if (Array.isArray(query)) {
+      return ecs.query(this.world, [
+        ecs.All(query),
+        ecs.None(this.components.despawned),
+      ])
+    }
+
+    query.all ??= []
+    query.any ??= []
+    query.none ??= []
+
+    const shouldExcludeDespawnedEntities = !query.all.includes(this.components.despawned) 
+      && !query.any.includes(this.components.despawned)
+      && !query.none.includes(this.components.despawned)
+
+    if (shouldExcludeDespawnedEntities) {
+      query.none.push(this.components.despawned)
+    }
+
     const filter = [
-      query.all && query.all.length > 0 ? ecs.All(...query.all) : null,
-      query.any && query.any.length > 0 ? ecs.Any(...query.any) : null,
-      query.none && query.none.length > 0 ? ecs.None(...query.none) : null
+      query.all.length > 0 ? ecs.All(query.all) : null,
+      query.any.length > 0 ? ecs.Any(query.any) : null,
+      query.none.length > 0 ? ecs.None(query.none) : null
     ].filter(Boolean)
 
     if (filter.length === 0) {
