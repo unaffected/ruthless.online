@@ -1,11 +1,11 @@
 import { type Game, type System } from '@/game'
 import Matter from 'matter-js'
-import physics from '@/server/system/physics'
 import event from '@/game/system/event'
+import physics from '@/game/system/physics'
 
 declare module '@/game/system/event' { 
   interface Events {
-    'server:collision:start': Array<{
+    'game:collision:start': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -13,7 +13,7 @@ declare module '@/game/system/event' {
       collision: Matter.Collision
     }>
 
-    'server:collision:active': Array<{
+    'game:collision:active': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -21,7 +21,7 @@ declare module '@/game/system/event' {
       collision: Matter.Collision
     }>
 
-    'server:collision:end': Array<{
+    'game:collision:end': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -31,11 +31,11 @@ declare module '@/game/system/event' {
 }
 
 export const system: System = {
-  id: 'server:collision' as const,
+  id: 'game:collision' as const,
   dependencies: [physics, event],
   install: async (game) => {
     Matter.Events.on(game.physics.engine, 'collisionStart', (event) => {
-      game.emit('server:collision:start', event.pairs.map((pair) => ({
+      game.emit('game:collision:start', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,
@@ -45,7 +45,7 @@ export const system: System = {
     })
 
     Matter.Events.on(game.physics.engine, 'collisionActive', (event) => {
-      game.emit('server:collision:active', event.pairs.map((pair) => ({
+      game.emit('game:collision:active', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,
@@ -55,7 +55,7 @@ export const system: System = {
     })
 
     Matter.Events.on(game.physics.engine, 'collisionEnd', (event) => {
-      game.emit('server:collision:end', event.pairs.map((pair) => ({
+      game.emit('game:collision:end', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,

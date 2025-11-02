@@ -5,7 +5,8 @@ import { Graphics } from 'pixi.js'
 declare module '@/game' { 
   interface Game {
     map: {
-      container: Graphics,
+      container: any
+      walls: any[]
       width: number
       height: number
       grid: number
@@ -19,9 +20,10 @@ export const system: System = {
   install: async (game) => {
     game.map = {
       container: new Graphics(),
-      width: 2880,
-      height: 1620,
-      grid: 100
+      walls: [],
+      width: game.config.map.width,
+      height: game.config.map.height,
+      grid: game.config.map.grid
     }
 
     game.map.container.label = 'map'

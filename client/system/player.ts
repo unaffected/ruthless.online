@@ -1,5 +1,6 @@
 import { type System } from '@/game'
 import network from '@/client/system/network'
+import collider from '@/game/system/collider'
 
 declare module '@/game' { 
   interface Game {
@@ -10,13 +11,28 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:player' as const,
-  dependencies: [network],
+  dependencies: [network, collider],
   install: async (game) => {
     game.active_player = () => (typeof game.entity === 'number')
     game.is_local_player = (entity) => (game.active_player() && entity === game.entity)
 
     game.on('client:player:connected', () => {
       console.debug('[client:player] connected to server')
+      
+      game.collider.spawn('circle', game.entity, {
+        radius: 20,
+        options: {
+          collisionFilter: game.config.collision.COLLISION_FILTER.PLAYER,
+          isStatic: false,
+          isSleeping: false,
+          sleepThreshold: Infinity,
+          friction: 0,
+          frictionAir: 0,
+          frictionStatic: 0,
+          restitution: 0,
+          inertia: Infinity,
+        }
+      })
     })
   },
   tick: async (game) => {

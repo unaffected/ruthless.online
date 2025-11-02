@@ -31,16 +31,6 @@ export const collider: Collider<'circle'> = {
   },
   despawn: (game: Game, entity: number, body) => {
     Matter.Composite.remove(game.physics.engine.world, body)
-  },
-  tick: (game, entity, body) => {
-    const position = game.get(entity, 'position')
-    
-    if (!position) return 
-
-    Matter.Body.setPosition(body, {
-      x: position.x,
-      y: position.y
-    })
   }
 }
 
