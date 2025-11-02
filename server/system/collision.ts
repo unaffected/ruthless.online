@@ -5,7 +5,7 @@ import event from '@/game/system/event'
 
 declare module '@/game/system/event' { 
   interface Events {
-    'collision:start': Array<{
+    'server:collision:start': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -13,7 +13,7 @@ declare module '@/game/system/event' {
       collision: Matter.Collision
     }>
 
-    'collision:active': Array<{
+    'server:collision:active': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -21,7 +21,7 @@ declare module '@/game/system/event' {
       collision: Matter.Collision
     }>
 
-    'collision:end': Array<{
+    'server:collision:end': Array<{
       entityA: number
       entityB: number
       bodyA: Matter.Body
@@ -35,7 +35,7 @@ export const system: System = {
   dependencies: [physics, event],
   install: async (game) => {
     Matter.Events.on(game.physics.engine, 'collisionStart', (event) => {
-      game.emit('collision:start', event.pairs.map((pair) => ({
+      game.emit('server:collision:start', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,
@@ -45,7 +45,7 @@ export const system: System = {
     })
 
     Matter.Events.on(game.physics.engine, 'collisionActive', (event) => {
-      game.emit('collision:active', event.pairs.map((pair) => ({
+      game.emit('server:collision:active', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,
@@ -55,7 +55,7 @@ export const system: System = {
     })
 
     Matter.Events.on(game.physics.engine, 'collisionEnd', (event) => {
-      game.emit('collision:end', event.pairs.map((pair) => ({
+      game.emit('server:collision:end', event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,

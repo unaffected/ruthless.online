@@ -36,6 +36,8 @@ export const system: System = {
       history: new Map<Connection, number>(),
     }
 
+    game.on('server:player:disconnected', (connection) => { game.controller.history.delete(connection) })
+
     game.on('server:player:input', (event) => {
       const now = Date.now()
       const entity = game.connections.get(event.connection)
@@ -59,16 +61,9 @@ export const system: System = {
       const view = new DataView((event.input as Buffer<ArrayBuffer>).buffer)
       const { state, sequence } = packet.input.decode(view)
 
-      game.set(entity, 'input', {
-        packed: input.pack(state),
-        sequence,
-      })
+      game.set(entity, 'input', { packed: input.pack(state), sequence })
 
       game.emit('server:controller:input', { connection: event.connection, entity, state, sequence })
-    })
-
-    game.on('server:player:disconnected', (connection) => {
-      game.controller.history.delete(connection)
     })
   },
   tick: async (game) => {
@@ -81,7 +76,7 @@ export const system: System = {
       
       const state = input.unpack(inputComponent.packed)
       
-      game.action('move', entity, { input: state })
+      game.action('move', entity, state)
     }
   }
 }

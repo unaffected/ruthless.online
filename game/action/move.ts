@@ -1,9 +1,9 @@
 import type { Action } from '@/game/system/action'
 import type { State } from '@/game/utility/input'
 
-declare module '@/game/system/action' { interface Actions { move: Move } }
+declare module '@/game/system/action' { interface Actions { move: MoveAction } }
 
-export type Move = { input: State }
+export type MoveAction = State
 
 export const action: Action<'move'> = {
   id: 'move',
@@ -11,16 +11,14 @@ export const action: Action<'move'> = {
     const player = game.get(entity, 'player')
     
     if (!player) return
-    
-    const { input } = params
-    
+        
     let velocity_x = 0
     let velocity_y = 0
     
-    if (input.LEFT) velocity_x -= 1
-    if (input.RIGHT) velocity_x += 1
-    if (input.UP) velocity_y -= 1
-    if (input.DOWN) velocity_y += 1
+    if (params.LEFT) velocity_x -= 1
+    if (params.RIGHT) velocity_x += 1
+    if (params.UP) velocity_y -= 1
+    if (params.DOWN) velocity_y += 1
     
     if (velocity_x !== 0 && velocity_y !== 0) {
       const magnitude = Math.sqrt(velocity_x * velocity_x + velocity_y * velocity_y)
