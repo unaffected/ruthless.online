@@ -1,6 +1,8 @@
-import { createSnapshotSerializer, createObserverSerializer, createSoASerializer } from 'bitecs/serialization'
 import { type System } from '@/game'
-import * as packet from '@/game/utility/packet'
+import { default as packet_system, type PACKET as TYPE } from '@/game/system/packet'
+import { PACKET } from '@/game/utility/packet'
+import grid from '@/server/system/grid'
+import event from '@/game/system/event'
 import index from "@/client/canvas/index.html"
 
 declare module '@/game/system/event' {
@@ -11,16 +13,20 @@ declare module '@/game/system/event' {
       connection: Connection, 
       input: string | Buffer<ArrayBuffer>,
     }
+    'server:network:sync': {
+      connection: Connection
+      entity: number
+      relevant_entities: number[]
+    }
   }
 }
 
 declare module '@/game' { 
   interface Game {
     connections: Map<Connection, number>
-    observers: Map<Connection, ReturnType<typeof createObserverSerializer>>
+    observers: Map<Connection, () => ArrayBuffer>
     server: Bun.Server<Socket>
-    send: (connection: Connection, type: packet.Packet, data: ArrayBuffer) => void
-    sync: (connection: Connection) => void
+    send: <P extends TYPE>(connection: Connection, type: P, entities: number[]) => void
   }
 }
 
@@ -32,18 +38,26 @@ export type Socket = {}
 
 export const system: System = {
   id: 'server:network' as const,
+  dependencies: [packet_system, grid, event],
   install: async (game) => {
-    const components = [game.components.player]
-
-    const snapshotSerializer = createSnapshotSerializer(game.world, components)
-    const updateSerializer = createSoASerializer(components)
-
     game.connections = new Map<Connection, number>()
+    game.observers = new Map<Connection, () => ArrayBuffer>()
 
-    game.observers = new Map<Connection, ReturnType<typeof createObserverSerializer>>()
+    game.send = <P extends TYPE>(connection: Connection, type: P, entities: number[]) => {
+      const packet = game.packet.registry.get(type)
 
-    game.send = (connection: Connection, type: packet.Packet, data: ArrayBuffer) => {
-      connection.send(packet.make(type, data))
+      if (!packet) {
+        console.warn(`[server:network] unknown packet: ${type}`)
+        return
+      }
+
+      const data = packet.encode(game, entities)
+      const buffer = new Uint8Array(data.byteLength + 1)
+      
+      buffer[0] = packet.type
+      buffer.set(new Uint8Array(data), 1)
+
+      connection.send(buffer.buffer)
     }
 
     game.server = Bun.serve<Socket>({
@@ -92,9 +106,12 @@ export const system: System = {
           const entity = game.spawn()
 
           game.connections.set(connection, entity)
-          game.observers.set(connection, createObserverSerializer(game.world, game.components.sync, components))
+          
+          const entities = game.packet.registry.get('entities')!
 
-          game.send(connection, packet.PACKET.SNAPSHOT, snapshotSerializer())
+          game.observers.set(connection, entities.serializer(game) as () => ArrayBuffer)
+
+          game.send(connection, 'connected', [entity])
 
           game.emit('server:player:connected', connection)
 
@@ -103,24 +120,31 @@ export const system: System = {
       },
     })
 
-    game.sync = (connection: Connection) => {
-      const entities = game.observers.get(connection)!()
-
-      if (entities && entities.byteLength > 0) {
-        game.send(connection, packet.PACKET.ENTITIES, entities)
-      }
-
-      game.send(connection, packet.PACKET.UPDATE, updateSerializer(game.query([
-        game.components.sync,
-        game.components.player,
-      ])))
-    }
   },
   tick: async (game) => {
     if (game.frame % 2 !== 0) return
 
-    for (const connection of game.connections.keys()) {
-      game.sync(connection)
+    for (const [connection, entity] of game.connections) {
+      const entities_data = game.observers.get(connection)!()
+
+      if (entities_data && entities_data.byteLength > 0) {
+        const buffer = new Uint8Array(entities_data.byteLength + 1)
+        buffer[0] = PACKET.ENTITIES
+        buffer.set(new Uint8Array(entities_data), 1)
+        connection.send(buffer.buffer)
+      }
+
+      const position = game.get(entity, 'position')
+
+      const relevant_entities = position 
+        ? game.grid.load(position.x, position.y)
+        : [entity]
+
+      game.emit('server:network:sync', { 
+        connection, 
+        entity,
+        relevant_entities,
+      })
     }
   }
 }

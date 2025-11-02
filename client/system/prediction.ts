@@ -105,7 +105,7 @@ const rollback = (game: Game, entity: number, server: Snapshot, history: Predict
   const pending = history.filter(s => s.sequence > lastSeq)
   
   for (const snap of pending) {
-    game.action('move', entity, { input: snap.input })
+    game.action('move', entity, snap.input)
   }
 }
 

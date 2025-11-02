@@ -10,9 +10,7 @@ export const system: System = {
     })
   },
   tick: async (game) => {
-    const player = game.get(game.entity, 'player')
-
-    if (!player) return
+    if (!game.entity) return
 
     if (game.prediction?.enabled && game.prediction.snapshot) {
       const server: any = {}

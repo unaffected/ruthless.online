@@ -1,5 +1,4 @@
 import { type System } from '@/game'
-import { PACKET } from '@/game/utility/packet'
 import network from '@/server/system/network'
 
 export const system: System = {
@@ -11,18 +10,11 @@ export const system: System = {
 
       game.add(entity, 'sync')
       game.add(entity, 'input', { packed: 0, sequence: 0 })
-      game.add(entity, 'player', { 
-        health_current: 100.00, 
-        health_max: 100.0, 
-        movement_speed: 6.0,
-        position_x: 50.0,
-        position_y: 25.0,
-        velocity_x: 0.0,
-        velocity_y: 0.0,
-        rotation: 0.0,
-      })
-
-      game.send(connection, PACKET.CONNECTED, new Uint32Array([entity]).buffer)
+      game.add(entity, 'position', { x: 50.0, y: 25.0 })
+      game.add(entity, 'velocity', { x: 0.0, y: 0.0 })
+      game.add(entity, 'rotation', { value: 0.0 })
+      game.add(entity, 'health', { current: 100.0, maximum: 100.0 })
+      game.add(entity, 'movement', { speed: 6.0 })
 
       console.debug(`[server:player] player spawned: #${entity}`)
     })

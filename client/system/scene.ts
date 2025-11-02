@@ -41,7 +41,7 @@ export const system: System<ApplicationOptions> = {
     window.document.body.appendChild(game.scene.canvas)
   },
   tick: async (game) => {
-    const players = game.query([game.components.player])
+    const players = game.query([game.components.position])
 
     for (const entity of players) {
       if (!game.graphics.has(entity)) {

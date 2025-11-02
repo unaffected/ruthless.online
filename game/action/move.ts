@@ -8,34 +8,37 @@ export type MoveAction = State
 export const action: Action<'move'> = {
   id: 'move',
   execute: (game, entity, params) => {
-    const player = game.get(entity, 'player')
+    const position = game.get(entity, 'position')
+    const velocity = game.get(entity, 'velocity')
+    const movement = game.get(entity, 'movement')
     
-    if (!player) return
+    if (!position || !velocity || !movement) return
         
-    let velocity_x = 0
-    let velocity_y = 0
+    let vx = 0
+    let vy = 0
     
-    if (params.LEFT) velocity_x -= 1
-    if (params.RIGHT) velocity_x += 1
-    if (params.UP) velocity_y -= 1
-    if (params.DOWN) velocity_y += 1
+    if (params.LEFT) vx -= 1
+    if (params.RIGHT) vx += 1
+    if (params.UP) vy -= 1
+    if (params.DOWN) vy += 1
     
-    if (velocity_x !== 0 && velocity_y !== 0) {
-      const magnitude = Math.sqrt(velocity_x * velocity_x + velocity_y * velocity_y)
+    if (vx !== 0 && vy !== 0) {
+      const magnitude = Math.sqrt(vx * vx + vy * vy)
       
-      velocity_x /= magnitude
-      velocity_y /= magnitude
+      vx /= magnitude
+      vy /= magnitude
     }
     
-    velocity_x *= player.movement_speed
-    velocity_y *= player.movement_speed
+    vx *= movement.speed
+    vy *= movement.speed
 
-    player.position_x += velocity_x
-    player.position_y += velocity_y
-    player.velocity_x = velocity_x
-    player.velocity_y = velocity_y
+    position.x += vx
+    position.y += vy
+    velocity.x = vx
+    velocity.y = vy
     
-    game.set(entity, 'player', player)
+    game.set(entity, 'position', position)
+    game.set(entity, 'velocity', velocity)
   }
 }
 

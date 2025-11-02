@@ -35,12 +35,12 @@ export const system: System = {
     }
   },
   tick: async (game) => {
-    const player = game.get(game.entity, 'player')!
+    const position = game.get(game.entity, 'position')
 
-    if (!player) return
+    if (!position) return
 
-    game.camera.target_x = player.position_x
-    game.camera.target_y = player.position_y
+    game.camera.target_x = position.x
+    game.camera.target_y = position.y
 
     const dx = game.camera.target_x - game.camera.x
     const dy = game.camera.target_y - game.camera.y

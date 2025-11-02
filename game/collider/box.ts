@@ -37,13 +37,13 @@ export const collider: Collider<'box'> = {
     Matter.Composite.remove(game.physics.engine.world, body)
   },
   tick: (game, entity, body) => {
-    const player = game.get(entity, 'player')
+    const position = game.get(entity, 'position')
     
-    if (!player) return
+    if (!position) return
     
     Matter.Body.setPosition(body, {
-      x: player.position_x,
-      y: player.position_y
+      x: position.x,
+      y: position.y
     })
   }
 }

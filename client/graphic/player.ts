@@ -31,14 +31,14 @@ export const graphic: Graphic<'player'> = {
     game.scene.stage.removeChild(graphic)
   },
   tick: (game: Game, entity: number, graphic) => {
-    const player = game.get(entity, 'player')
+    const position = game.get(entity, 'position')
     
-    if (!player) return
+    if (!position) return
     
     const state = game.interpolation?.states.get(entity)
     
-    const x = state ? state.current_x : player.position_x
-    const y = state ? state.current_y : player.position_y
+    const x = state ? state.current_x : position.x
+    const y = state ? state.current_y : position.y
     
     if (graphic.x !== x || graphic.y !== y) {
       graphic.position.set(x, y)

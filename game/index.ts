@@ -36,6 +36,14 @@ export type Options = {
   interpolation_speed?: number
   interpolation_snap_threshold?: number
   interpolation_rollback_threshold?: number
+  grid_cell_size?: number
+  grid_load_radius?: number
+  network_sync_threshold?: number
+  network_position_sync_threshold?: number
+  network_velocity_sync_threshold?: number
+  network_rotation_sync_threshold?: number
+  network_health_sync_threshold?: number
+  network_movement_sync_threshold?: number
   prediction_enabled?: boolean
   prediction_error_threshold?: number
   prediction_buffer_size?: number

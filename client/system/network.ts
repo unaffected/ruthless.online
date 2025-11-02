@@ -1,6 +1,5 @@
-import { createSnapshotDeserializer, createObserverDeserializer, createSoADeserializer } from 'bitecs/serialization'
 import { type System } from '@/game'
-import * as packet from '@/game/utility/packet'
+import packet_system from '@/game/system/packet'
 
 declare module '@/game/system/event' {
   interface Events {
@@ -17,20 +16,15 @@ declare module '@/game' {
 
 export const system: System = {
   id: 'client:network' as const,
+  dependencies: [packet_system],
   install: async (game) => {
     const entities = new Map<number, number>()
-    const components = [game.components.player]
-
-    const observerDeserializer = createObserverDeserializer(game.world, game.components.sync, components)
-    const snapshotDeserializer = createSnapshotDeserializer(game.world, components)
-    const updateDeserializer = createSoADeserializer(components)
 
     game.socket = new WebSocket('/socket')
     game.socket.binaryType = 'arraybuffer'
 
     game.socket.addEventListener('open', () => {
       game.emit('client:player:connected', game.socket)
-
       console.debug('[client:network] connected to server')
     })
 
@@ -39,22 +33,15 @@ export const system: System = {
     })
 
     game.socket.addEventListener('message', (event) => {
-      const message = packet.parse(event.data)
-    
-      switch (message.type) {
-        case packet.PACKET.SNAPSHOT:
-          snapshotDeserializer(message.data, entities)
-          break
-        case packet.PACKET.ENTITIES:
-          observerDeserializer(message.data, entities)
-          break
-        case packet.PACKET.UPDATE:
-          updateDeserializer(message.data, entities)
-          break
-        case packet.PACKET.CONNECTED:
-          game.entity = new DataView(message.data).getUint32(0, true)
-          console.debug(`[client:network] connection accepted: #${game.entity}`)
-          break
+      const buffer = new Uint8Array(event.data)
+      const packet_type = buffer[0]!
+      const data = buffer.slice(1).buffer
+      
+      const packet = game.packet.types.get(packet_type)
+      if (packet) {
+        packet.decode(game, data, entities)
+      } else {
+        console.warn(`[client:network] unknown packet type: ${packet_type}`)
       }
     })
   }

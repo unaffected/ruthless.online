@@ -8,7 +8,7 @@ export const system: System = {
     game.on('client:controller:tick', () => {
       if (!game.entity) return
 
-      game.action('move', game.entity, { input: game.input.state })
+      game.action('move', game.entity, game.input.state)
     })
   }
 }

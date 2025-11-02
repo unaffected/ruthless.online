@@ -37,33 +37,33 @@ export const system: System = {
   tick: async (game) => {
     if (!game.interpolation.enabled) return
 
-    const entities = game.query([game.components.player])
+    const entities = game.query([game.components.position])
 
     for (const entity of entities) {
-      const player = game.get(entity, 'player')
+      const position = game.get(entity, 'position')
 
-      if (!player) continue
+      if (!position) continue
 
       let state = game.interpolation.states.get(entity)
 
       if (!state) {
         game.interpolation.states.set(entity, {
-          previous_x: player.position_x,
-          previous_y: player.position_y,
-          target_x: player.position_x,
-          target_y: player.position_y,
-          current_x: player.position_x,
-          current_y: player.position_y,
+          previous_x: position.x,
+          previous_y: position.y,
+          target_x: position.x,
+          target_y: position.y,
+          current_x: position.x,
+          current_y: position.y,
         })
 
         continue
       }
 
-      if (state.target_x !== player.position_x || state.target_y !== player.position_y) {
+      if (state.target_x !== position.x || state.target_y !== position.y) {
         state.previous_x = state.current_x
         state.previous_y = state.current_y
-        state.target_x = player.position_x
-        state.target_y = player.position_y
+        state.target_x = position.x
+        state.target_y = position.y
       }
 
       const dx = state.target_x - state.current_x
