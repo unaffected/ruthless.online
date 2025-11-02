@@ -19,7 +19,7 @@ declare module '@/game' {
 }
 
 export const system: System = {
-  id: 'action' as const,
+  id: 'game:action' as const,
   dependencies: [event],
   install: async (game) => {
     game.actions = new Map()
@@ -38,6 +38,8 @@ export const system: System = {
     }
 
     actions.forEach((action) => { game.actions.set(action.id, action) })
+
+    console.debug('[game:action] system initialized')
   }
 }
 

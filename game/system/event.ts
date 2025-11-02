@@ -36,7 +36,7 @@ export type Registration <T extends Event> = Subscription<T> & {
 export type Subscriptions = Array<Registration<Event>>
 
 export const system: System = {
-  id: 'event' as const,
+  id: 'game:event' as const,
   dependencies: [timer],
   install: async (game) => {
     game.subscriptions = []
@@ -120,6 +120,8 @@ export const system: System = {
   
       return game
     }
+
+    console.debug('[game:event] system initialized')
   }
 }
 

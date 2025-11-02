@@ -20,7 +20,7 @@ export type Timer = {
 }
 
 export const system: System = {
-  id: 'timer' as const,
+  id: 'game:timer' as const,
   install: async (game) => {
     game.timers = new Map<string, Timer>()
 
@@ -66,6 +66,8 @@ export const system: System = {
     game.wait = async (duration: number = 0) => new Promise((resolve) => {
       setTimeout(() => { resolve(true) }, duration)
     })
+
+    console.debug('[game:timer] system initialized')
   }
 }
 

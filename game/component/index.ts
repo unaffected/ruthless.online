@@ -1,3 +1,4 @@
+export { component as despawned } from './despawned'
 export { component as input } from './input'
 export { component as player } from './player'
 export { component as sync } from './sync'

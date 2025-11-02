@@ -83,7 +83,15 @@ export class Game {
   }
 
   public despawn(entity: number): Game {
-    ecs.removeEntity(this.world, entity)
+    ecs.addComponent(this.world, entity, this.components.despawned)
+
+    return this
+  }
+
+  public flush(): Game {
+    for (const entity of this.query([this.components.despawned])) {
+      ecs.removeEntity(this.world, entity)
+    }
 
     return this
   }
