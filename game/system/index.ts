@@ -1,5 +1,6 @@
 import type { Game } from '@/game'
 import action from '@/game/system/action'
+import collider from '@/game/system/collider'
 import despawn from '@/game/system/despawn'
 import event from '@/game/system/event'
 import timer from '@/game/system/timer'
@@ -16,6 +17,7 @@ export type Systems = Array<Systems | System>
 
 export const systems: Systems = [
   action,
+  collider,
   despawn,
   event,
   timer,

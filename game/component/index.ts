@@ -1,3 +1,4 @@
+export { component as collider } from './collider'
 export { component as despawned } from './despawned'
 export { component as input } from './input'
 export { component as player } from './player'
