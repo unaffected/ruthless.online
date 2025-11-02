@@ -16,7 +16,7 @@ declare module '@/game/system/event' {
     'server:network:sync': {
       connection: Connection
       entity: number
-      relevant_entities: number[]
+      nearby: number[]
     }
   }
 }
@@ -122,29 +122,25 @@ export const system: System = {
 
   },
   tick: async (game) => {
-    if (game.frame % 2 !== 0) return
+    if (game.frame % 3 !== 0) return
 
     for (const [connection, entity] of game.connections) {
-      const entities_data = game.observers.get(connection)!()
+      const entities = game.observers.get(connection)!()
 
-      if (entities_data && entities_data.byteLength > 0) {
-        const buffer = new Uint8Array(entities_data.byteLength + 1)
+      if (entities && entities.byteLength > 0) {
+        const buffer = new Uint8Array(entities.byteLength + 1)
+
         buffer[0] = PACKET.ENTITIES
-        buffer.set(new Uint8Array(entities_data), 1)
+        buffer.set(new Uint8Array(entities), 1)
+
         connection.send(buffer.buffer)
       }
 
       const position = game.get(entity, 'position')
 
-      const relevant_entities = position 
-        ? game.grid.load(position.x, position.y)
-        : [entity]
+      const nearby = position ? game.grid.load(position.x, position.y) : [entity]
 
-      game.emit('server:network:sync', { 
-        connection, 
-        entity,
-        relevant_entities,
-      })
+      game.emit('server:network:sync', { connection, entity, nearby })
     }
   }
 }
