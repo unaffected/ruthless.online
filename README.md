@@ -1,15 +1,26 @@
-# [`ruthless.online`](https://ruthless.online)
+# ruthless.online
 
-I'd recommend looking at `./game/index.ts` first. This is the core of the engine. It exposes the following core functionality:
+A 2D web-based multiplayer game engine.
 
-- ECS Engine: Custom ECS engine implmentation using structures of typed arrays.
-  - `spawn`, `despawn`, `add`, `get`, etc.
-- Plugin System: Used to install additional systems.
-  - `install`, `make`
+**Core Engine** (`./game/index.ts`)
+- Custom ECS implementation using structures of typed arrays for performance
+- Plugin system for extending functionality
 
-Then, look at `./client/index.ts` and `./server/index.ts`. These are instances of the game engine in application. These files are really simple as they're really just importing the default game/systems, installing additional systems, and then starting the game engine.
+**Client/Server Architecture**
+- `./client/index.ts` - Browser-based game client with webgl rendering (PixiJS)
+- `./server/index.ts` - Authoritative game server with physics simulation (MatterJS)
+- WebSocket networking with client-side prediction and server reconciliation
 
-From there, it's mostly just individual systems, utilities, etc. 
+**Tech Stack**
+- Runtime: Bun
+- Graphics: PixiJS
+- Physics: Matter.js
+- UI: React + Tailwind
+- Language: TypeScript
+
+## Code Structure
+
+The engine core (`./game/`) is framework-agnostic and used by both client and server. Client and server each install their own systems (rendering, networking, physics, etc.) as plugins. Components are just typed arrays, systems are just functions that iterate over entities.
 
 ## Getting Started
 
