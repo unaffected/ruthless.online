@@ -318,7 +318,7 @@ if (player) {
 Include system context in all console output:
 
 ```typescript
-console.debug('[client:controller] initialized')
+console.debug('[client:controller] system initialized')
 console.warn('[client:prediction] large divergence:', delta)
 console.error('[server:network] connection failed:', error)
 ```

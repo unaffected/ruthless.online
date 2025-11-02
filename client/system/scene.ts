@@ -39,8 +39,6 @@ export const system: System<ApplicationOptions> = {
     game.scene.canvas.style.zIndex = '1'
 
     window.document.body.appendChild(game.scene.canvas)
-
-    console.debug('[client:scene] initialized')
   },
   tick: async (game) => {
     const players = game.query([game.components.player])

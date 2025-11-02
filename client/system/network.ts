@@ -57,8 +57,6 @@ export const system: System = {
           break
       }
     })
-
-    console.debug('[client:network] initialized')
   }
 }
 

@@ -102,8 +102,6 @@ export const system: System = {
     })
 
     game.emit('client:controller:ready')
-
-    console.debug('[client:controller] initialized')
   },
   tick: async (game) => {
     const gamepads = navigator.getGamepads()

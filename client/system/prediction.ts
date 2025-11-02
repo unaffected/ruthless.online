@@ -137,8 +137,6 @@ export const system: System = {
         game.prediction.history.shift()
       }
     })
-
-    console.debug('[client:prediction] initialized')
   },
   tick: async (game) => {
     if (!game.prediction.enabled || !game.entity || !game.prediction.snapshot) return

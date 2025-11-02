@@ -8,8 +8,6 @@ export const system: System = {
     game.on('client:player:connected', () => {
       console.debug('[client:player] connected to server')
     })
-
-    console.debug('[client:player] initialized')
   },
   tick: async (game) => {
     const player = game.get(game.entity, 'player')

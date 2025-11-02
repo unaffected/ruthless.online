@@ -38,8 +38,6 @@ export const system: System = {
     }
 
     actions.forEach((action) => { game.actions.set(action.id, action) })
-
-    console.debug('[game:action] system initialized')
   }
 }
 

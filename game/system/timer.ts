@@ -66,8 +66,6 @@ export const system: System = {
     game.wait = async (duration: number = 0) => new Promise((resolve) => {
       setTimeout(() => { resolve(true) }, duration)
     })
-
-    console.debug('[game:timer] system initialized')
   }
 }
 

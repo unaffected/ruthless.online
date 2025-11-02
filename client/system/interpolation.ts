@@ -33,8 +33,6 @@ export const system: System = {
       rollback_threshold: game.option('interpolation_rollback_threshold', 100.0),
       states: new Map(),
     }
-
-    console.debug('[client:interpolation] initialized')
   },
   tick: async (game) => {
     if (!game.interpolation.enabled) return

@@ -10,8 +10,6 @@ export const system: System = {
 
       game.action('move', game.entity, { input: game.input.state })
     })
-
-    console.debug('[client:input] initialized')
   }
 }
 

@@ -79,8 +79,6 @@ export const system: System = {
     }
 
     graphics.forEach((graphic) => { game.graphic.registry.set(graphic.id, graphic) })
-
-    console.debug('[client:graphic] initialized')
   }
 }
 

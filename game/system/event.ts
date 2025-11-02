@@ -120,8 +120,6 @@ export const system: System = {
   
       return game
     }
-
-    console.debug('[game:event] system initialized')
   }
 }
 

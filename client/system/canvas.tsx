@@ -17,8 +17,6 @@ export const system: System = {
     }
 
     game.canvas.render((<StrictMode><Canvas /></StrictMode>))
-
-    console.debug('[client:render] initialized')
   },
 }
 

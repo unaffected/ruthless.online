@@ -50,7 +50,6 @@ export class Game {
   public timeout: NodeJS.Timeout | number | null = null;
 
   public components: Components = components
-  public entities: ReturnType<typeof ecs.createEntityIndex> = ecs.createEntityIndex(ecs.withVersioning(12))
   public world: ecs.World
 
   public installed: string[] = []
@@ -210,6 +209,8 @@ export class Game {
       }
 
       this.systems.push(system)
+
+      console.debug(`[${system.id}] system initialized`)
     }
 
     return this

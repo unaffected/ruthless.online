@@ -33,8 +33,6 @@ export const system: System = {
         window.innerHeight / 2 - game.camera.y,
       ),
     }
-
-    console.debug('[client:camera] initialized')
   },
   tick: async (game) => {
     const player = game.get(game.entity, 'player')!

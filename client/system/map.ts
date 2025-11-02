@@ -66,8 +66,6 @@ export const system: System = {
     } else {
       game.scene.stage.addChildAt(game.map.container, 0)
     }
-
-    console.debug('[client:map] initialized')
   },
 }
 
