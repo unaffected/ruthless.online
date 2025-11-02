@@ -94,7 +94,7 @@ export const system: System = {
           game.connections.set(connection, entity)
           game.observers.set(connection, createObserverSerializer(game.world, game.components.sync, components))
 
-          game.send(connection, packet.PACKET.SNAPSHOT, snapshotSerializer())
+          game.sync(connection)
 
           game.emit('server:player:connected', connection)
 
@@ -107,7 +107,7 @@ export const system: System = {
       const entities = game.observers.get(connection)!()
 
       if (entities && entities.byteLength > 0) {
-        game.send(connection, packet.PACKET.SYNC, entities)
+        game.send(connection, packet.PACKET.ENTITIES, entities)
       }
 
       game.send(connection, packet.PACKET.UPDATE, updateSerializer(game.query([

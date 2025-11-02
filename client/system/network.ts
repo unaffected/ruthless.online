@@ -45,7 +45,7 @@ export const system: System = {
         case packet.PACKET.SNAPSHOT:
           snapshotDeserializer(message.data, entities)
           break
-        case packet.PACKET.SYNC:
+        case packet.PACKET.ENTITIES:
           observerDeserializer(message.data, entities)
           break
         case packet.PACKET.UPDATE:

@@ -12,7 +12,7 @@ export type Packet = typeof PACKET[keyof typeof PACKET]
 
 export const PACKET = {
   SNAPSHOT: 0 as const,
-  SYNC: 1 as const,
+  ENTITIES: 1 as const,
   UPDATE: 2 as const,
   CONNECTED: 3 as const,
   INPUT: 4 as const,
