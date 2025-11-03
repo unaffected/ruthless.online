@@ -92,12 +92,41 @@ ruthless/
 │       ├── binary.ts
 │       └── input.ts
 ├── client/            # Client-specific
-│   ├── system/        # Client systems
+│   ├── canvas/        # React UI layer
+│   │   ├── component/ # Reusable React components (Button, Input, etc)
+│   │   ├── scene/     # Page-level components (game, menu, etc)
+│   │   ├── widget/    # Game HUD widgets (health bars, minimaps, etc)
+│   │   └── utility/   # React utilities and hooks
 │   ├── graphic/       # PixiJS graphics
-│   └── canvas/        # React UI
+│   └── system/        # Client systems
 └── server/            # Server-specific
     └── system/        # Server systems
 ```
+
+### React Canvas Organization
+
+The `client/canvas/` directory contains the React UI layer that sits on top of the PixiJS canvas:
+
+**`client/canvas/scene/`** - Page-level components
+- Full-screen layouts for different game states
+- Examples: `game.tsx`, `menu.tsx`, `login.tsx`
+- Named with snake_case
+
+**`client/canvas/widget/`** - Game HUD widgets  
+- Self-contained UI elements that display game state
+- Organized by feature: `widget/player/health.tsx`, `widget/player/energy.tsx`
+- Communicate with game engine via event bus
+- Use `useGameEvent` hook for reactive updates
+
+**`client/canvas/component/`** - Reusable UI components
+- Generic React components (buttons, inputs, cards)
+- Named with PascalCase: `Button.tsx`, `Input.tsx`
+- Shadcn/ui style components
+
+**`client/canvas/utility/`** - React utilities
+- Hooks for game integration: `useGameEvent`, `useComponent`
+- Game instance access
+- Theme utilities
 
 ### Index Files for Aggregation
 
@@ -377,6 +406,98 @@ export const component = {
   y: new Float32Array([])
 }
 ```
+
+## Widget Pattern
+
+Widgets are React components that display game state and use the event bus for communication.
+
+### Widget Structure
+
+```typescript
+// client/canvas/widget/player/health.tsx
+import { useState } from 'react'
+import { useGameEvent } from '@/client/canvas/utility/game'
+
+export function HealthWidget() {
+  const [health, setHealth] = useState({ current: 100, maximum: 100 })
+  
+  // Subscribe to game events
+  useGameEvent('client:player:stats', (data) => {
+    setHealth({
+      current: data.health_current,
+      maximum: data.health_maximum
+    })
+  })
+  
+  // Render UI
+  return (
+    <div className="health-bar">
+      {/* ... */}
+    </div>
+  )
+}
+```
+
+### Event-Driven Communication
+
+Widgets receive data through game events, not direct prop passing:
+
+**System emits events:**
+```typescript
+// client/system/stats.ts
+export const system: System = {
+  id: 'client:stats',
+  tick: async (game) => {
+    if (!game.active_player()) return
+    
+    const health = game.get(game.entity, 'health')
+    
+    game.emit('client:player:stats', {
+      health_current: health?.current ?? 0,
+      health_maximum: health?.maximum ?? 0
+    })
+  }
+}
+```
+
+**Widget subscribes:**
+```typescript
+// Widget automatically subscribes/unsubscribes via useGameEvent
+useGameEvent('client:player:stats', (data) => {
+  setHealth({ current: data.health_current, maximum: data.health_maximum })
+})
+```
+
+### Game Utility Hook
+
+The `useGameEvent` hook manages event subscriptions:
+
+```typescript
+// client/canvas/utility/game.ts
+import { useEffect } from 'react'
+import game from '@/client'
+import type { Event, Data } from '@/game/system/event'
+
+export { game }
+
+export function useGameEvent<T extends Event>(
+  event: T,
+  handler: (data: Data<T>) => void
+) {
+  useEffect(() => {
+    game.on(event, handler)
+    return () => game.off(event, handler)
+  }, [event, handler])
+}
+```
+
+### Widget Best Practices
+
+1. **One widget per file** - Keep widgets focused
+2. **Use pointer-events-none** - Let clicks pass through to PixiJS
+3. **Event-driven** - Don't access game state directly in render
+4. **Conditional rendering** - Check `game.active_player()` before showing
+5. **Type-safe events** - Declare event types in system files
 
 ## Utility Modules
 

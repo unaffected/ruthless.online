@@ -8,6 +8,7 @@ import event from '@/game/system/event'
 import map from '@/game/system/map'
 import packet from '@/game/system/packet'
 import physics from '@/game/system/physics'
+import regeneration from '@/game/system/regeneration'
 import timer from '@/game/system/timer'
 
 export type { System, Systems }
@@ -22,6 +23,7 @@ export const systems: Systems = [
   collision,
   map,
   collider,
+  regeneration,
   despawn,
 ]
 

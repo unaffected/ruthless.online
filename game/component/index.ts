@@ -1,5 +1,6 @@
 export { component as collider } from './collider'
 export { component as despawned } from './despawned'
+export { component as energy } from './energy'
 export { component as health } from './health'
 export { component as input } from './input'
 export { component as movement } from './movement'

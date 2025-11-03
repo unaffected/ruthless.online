@@ -1,6 +1,6 @@
-declare module '@/game' { interface Components { health: typeof component }}
+declare module '@/game' { interface Components { energy: typeof component }}
 
-export const id = 'health' as const
+export const id = 'energy' as const
 
 export const component = {
   current: new Float32Array([]),

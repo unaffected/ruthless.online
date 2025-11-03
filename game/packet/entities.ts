@@ -34,6 +34,7 @@ export const packet: PacketDefinition<'entities'> = {
           game.add(client_entity, 'velocity')
           game.add(client_entity, 'rotation')
           game.add(client_entity, 'health')
+          game.add(client_entity, 'energy')
           game.add(client_entity, 'movement')
         },
         (server_entity) => {

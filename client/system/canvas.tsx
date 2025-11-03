@@ -10,10 +10,10 @@ export const system: System = {
   id: 'client:render' as const,
   install: async (game, options) => {    
     if (import.meta.hot) {
-      import.meta.hot.data.root ??= createRoot(window.document.getElementById('canvas')!)
+      import.meta.hot.data.root ??= createRoot(window.document.getElementById('hud')!)
       game.canvas ??= import.meta.hot.data.root
     } else {
-      game.canvas ??= createRoot(window.document.getElementById('canvas')!)
+      game.canvas ??= createRoot(window.document.getElementById('hud')!)
     }
 
     game.canvas.render((<StrictMode><Canvas /></StrictMode>))

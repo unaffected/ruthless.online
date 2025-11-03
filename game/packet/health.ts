@@ -12,10 +12,12 @@ export const packet: PacketDefinition<'health'> = {
   serializer: (game) => create_soa_serializer([
     { name: 'current', type: 'f32', array: game.components.health.current },
     { name: 'maximum', type: 'f32', array: game.components.health.maximum },
+    { name: 'regeneration', type: 'f32', array: game.components.health.regeneration },
   ]),
   deserializer: (game) => create_soa_deserializer([
     { name: 'current', type: 'f32', array: game.components.health.current },
     { name: 'maximum', type: 'f32', array: game.components.health.maximum },
+    { name: 'regeneration', type: 'f32', array: game.components.health.regeneration },
   ]),
 }
 

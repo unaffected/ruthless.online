@@ -4,3 +4,5 @@ import systems from '@/client/system'
 await game.install(systems)
 
 game.start()
+
+export default game

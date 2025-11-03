@@ -11,6 +11,7 @@ export const PACKET = {
   ROTATION: 12 as const,
   HEALTH: 13 as const,
   MOVEMENT: 14 as const,
+  ENERGY: 15 as const,
 } as const
 
 export const input = {

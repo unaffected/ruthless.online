@@ -5,6 +5,7 @@ import position from './position'
 import velocity from './velocity'
 import rotation from './rotation'
 import health from './health'
+import energy from './energy'
 import movement from './movement'
 
 export const packets: PacketDefinition[] = [
@@ -14,6 +15,7 @@ export const packets: PacketDefinition[] = [
   velocity,
   rotation,
   health,
+  energy,
   movement,
 ]
 

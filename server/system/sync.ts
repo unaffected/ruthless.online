@@ -20,6 +20,9 @@ const CONFIG: Array<{
   packet: 'health',
   threshold: 1.0,
 }, {
+  packet: 'energy',
+  threshold: 1.0,
+}, {
   packet: 'movement',
   threshold: 0.1,
 }] as const

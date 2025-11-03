@@ -9,6 +9,7 @@ import map from '@/client/system/map'
 import network from '@/client/system/network'
 import player from '@/client/system/player'
 import prediction from '@/client/system/prediction'
+import stats from '@/client/system/stats'
 import canvas from '@/client/system/canvas'
 
 export const systems: Systems = [
@@ -23,6 +24,7 @@ export const systems: Systems = [
   network,
   player,
   prediction,
+  stats,
 ]
 
 export default systems
