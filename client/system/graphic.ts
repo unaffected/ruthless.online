@@ -17,14 +17,14 @@ export type Graphic<K extends GRAPHIC = GRAPHIC> = {
 declare module '@/game' { 
   interface Game {
     graphics: Map<number, {
-      type: string
+      type: GRAPHIC
       graphic: PixiGraphics | Sprite
     }>
     graphic: {
       spawn: <K extends keyof Graphics>(type: K, entity: number, options?: Graphics[K]) => PixiGraphics | Sprite
       despawn: (entity: number) => void
       tick: () => void
-      registry: Map<string, Graphic>
+      registry: Map<GRAPHIC, Graphic>
     }
   }
 }
@@ -79,7 +79,7 @@ export const system: System = {
       }
     }
 
-    graphics.forEach((graphic) => { game.graphic.registry.set(graphic.id, graphic) })
+    graphics.forEach((graphic) => { game.graphic.registry.set(graphic.id, graphic as Graphic<typeof graphic.id>) })
     
     game.on('game:despawned', (entity) => { game.graphic.despawn(entity) })
   }

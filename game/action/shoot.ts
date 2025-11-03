@@ -8,7 +8,7 @@ export type ShootAction = State
 export const action: Action<'shoot'> = {
   id: 'shoot',
   cooldown: 300,
-  energy_cost: 10,
+  energy_cost: 3,
   execute: (game, entity, params) => {
     const position = game.get(entity, 'position')
     

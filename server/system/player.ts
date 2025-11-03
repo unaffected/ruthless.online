@@ -15,7 +15,7 @@ export const system: System = {
     game.add(entity, 'velocity', { x: 0.0, y: 0.0 })
     game.add(entity, 'rotation', { value: 0.0 })
     game.add(entity, 'health', { current: 100.0, maximum: 100.0, regeneration: 2.0 })
-    game.add(entity, 'energy', { current: 100.0, maximum: 100.0, regeneration: 5.0 })
+    game.add(entity, 'energy', { current: 100.0, maximum: 100.0, regeneration: 8.0 })
     game.add(entity, 'movement', { speed: 6.0 })
     
     game.collider.spawn('circle', entity, {
