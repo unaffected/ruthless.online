@@ -35,13 +35,15 @@ export const system: System = {
   dependencies: [physics, event],
   install: async (game) => {
     Matter.Events.on(game.physics.engine, 'collisionStart', (event) => {
-      game.emit('game:collision:start', event.pairs.map((pair) => ({
+      const pairs = event.pairs.map((pair) => ({
         entityA: pair.bodyA.plugin?.entity as number,
         entityB: pair.bodyB.plugin?.entity as number,
         bodyA: pair.bodyA,
         bodyB: pair.bodyB,
         collision: pair.collision
-      })))
+      }))
+      
+      game.emit('game:collision:start', pairs)
     })
 
     Matter.Events.on(game.physics.engine, 'collisionActive', (event) => {

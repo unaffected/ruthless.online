@@ -36,7 +36,9 @@ export const system: System = {
       history: new Map<Connection, number>(),
     }
 
-    game.on('server:player:disconnected', (connection) => { game.controller.history.delete(connection) })
+    game.on('server:player:disconnected', (connection) => { 
+      game.controller.history.delete(connection)
+    })
 
     game.on('server:player:input', (event) => {      
       const now = Date.now()
@@ -61,7 +63,16 @@ export const system: System = {
       const view = new DataView((event.input as Buffer<ArrayBuffer>).buffer)
       const { state, sequence } = packet.input.decode(view)
       
-      game.set(entity, 'input', { packed: input.pack(state), sequence })
+      const packed_buffer = input.pack(state)
+      const packed_view = new DataView(packed_buffer)
+      const packed_buttons = packed_view.getUint16(0, true)
+      
+      game.set(entity, 'input', { 
+        packed: packed_buttons,
+        sequence,
+        mouse_x: state.MOUSE_X,
+        mouse_y: state.MOUSE_Y
+      })
 
       game.emit('server:controller:input', { connection: event.connection, entity, state, sequence })
     })
@@ -76,9 +87,19 @@ export const system: System = {
       
       if (!component) continue
       
-      const state = input.unpack(component.packed)
+      const packed_buffer = new ArrayBuffer(6)
+      const packed_view = new DataView(packed_buffer)
+      packed_view.setUint16(0, component.packed, true)
+      packed_view.setInt16(2, component.mouse_x, true)
+      packed_view.setInt16(4, component.mouse_y, true)
+      
+      const state = input.unpack(packed_buffer)
 
       game.action('move', entity, state)
+      
+      if (state.ACTION_1) {
+        game.action('shoot', entity, state)
+      }
     }
   }
 }

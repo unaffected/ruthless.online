@@ -53,6 +53,9 @@ export const system: System = {
     for (const key of Object.keys(INPUT)) {
       game.input.state[key as keyof typeof INPUT] = false
     }
+    
+    game.input.state.MOUSE_X = 0
+    game.input.state.MOUSE_Y = 0
 
     const clear = () => {
       for (const key of Object.keys(INPUT)) {
@@ -63,7 +66,9 @@ export const system: System = {
       
       if (game.socket && game.socket.readyState === WebSocket.OPEN) {
         game.input.sequence = (game.input.sequence + 1) >>> 0
-        game.input.packed = pack(game.input.state)
+        const packed_buffer = pack(game.input.state)
+        const packed_view = new DataView(packed_buffer)
+        game.input.packed = packed_view.getUint16(0, true)
         game.socket.send(packet.input.encode(game.input.state, game.input.sequence))
         game.input.last_sent = performance.now()
         game.input.last_packed = game.input.packed
@@ -95,6 +100,33 @@ export const system: System = {
         }
       }
     })
+    
+    window.addEventListener('mousemove', (event: MouseEvent) => {
+      if (!game.camera) return
+      
+      const screen_x = event.clientX
+      const screen_y = event.clientY
+      
+      const world_x = screen_x - window.innerWidth / 2 + game.camera.x
+      const world_y = screen_y - window.innerHeight / 2 + game.camera.y
+      
+      game.input.state.MOUSE_X = world_x
+      game.input.state.MOUSE_Y = world_y
+    })
+    
+    window.addEventListener('mousedown', (event: MouseEvent) => {
+      if (event.button === 0) {
+        game.input.state.ACTION_1 = true
+        event.preventDefault()
+      }
+    })
+    
+    window.addEventListener('mouseup', (event: MouseEvent) => {
+      if (event.button === 0) {
+        game.input.state.ACTION_1 = false
+        event.preventDefault()
+      }
+    })
 
     game.on('client:controller:save', (mapping: Mapping) => {
       game.input.mapping = mapping
@@ -104,6 +136,17 @@ export const system: System = {
     game.emit('client:controller:ready')
   },
   tick: async (game) => {
+    const last_action_state = {
+      ACTION_1: game.input.state.ACTION_1,
+      ACTION_2: game.input.state.ACTION_2,
+      ACTION_3: game.input.state.ACTION_3,
+      ACTION_4: game.input.state.ACTION_4,
+      ACTION_5: game.input.state.ACTION_5,
+      ACTION_6: game.input.state.ACTION_6,
+      ACTION_7: game.input.state.ACTION_7,
+      ACTION_8: game.input.state.ACTION_8,
+    }
+    
     const gamepads = navigator.getGamepads()
     
     for (const gamepad of gamepads) {
@@ -151,7 +194,9 @@ export const system: System = {
       }
     }
 
-    game.input.packed = pack(game.input.state)
+    const packed_buffer = pack(game.input.state)
+    const packed_view = new DataView(packed_buffer)
+    game.input.packed = packed_view.getUint16(0, true)
 
     game.emit('client:controller:tick', { packed: game.input.packed })
 
@@ -163,8 +208,19 @@ export const system: System = {
     if (input_changed) {
       game.input.last_changed = now
     }
+    
+    const action_pressed = 
+      (!last_action_state.ACTION_1 && game.input.state.ACTION_1) ||
+      (!last_action_state.ACTION_2 && game.input.state.ACTION_2) ||
+      (!last_action_state.ACTION_3 && game.input.state.ACTION_3) ||
+      (!last_action_state.ACTION_4 && game.input.state.ACTION_4) ||
+      (!last_action_state.ACTION_5 && game.input.state.ACTION_5) ||
+      (!last_action_state.ACTION_6 && game.input.state.ACTION_6) ||
+      (!last_action_state.ACTION_7 && game.input.state.ACTION_7) ||
+      (!last_action_state.ACTION_8 && game.input.state.ACTION_8)
 
     const should_send = false
+      || action_pressed
       || (input_changed && elapsed_since_sent >= throttle_interval) 
       || (elapsed_since_sent >= game.input.keepalive_rate)
 

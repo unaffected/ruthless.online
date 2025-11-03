@@ -25,18 +25,28 @@ const CONFIG: Array<{
 }, {
   packet: 'movement',
   threshold: 0.1,
+}, {
+  packet: 'projectile',
+  threshold: 1.0,
 }] as const
 
 export const system: System = {
   id: 'server:sync',
   dependencies: [event, network, delta],
   install: async (game) => {
-    game.on('server:network:sync', ({ connection, nearby }) => {
+    game.on('server:network:sync', ({ connection, entity, nearby }) => {
       for (const config of CONFIG) {        
-        const dirty = nearby.filter(entity =>
+        let dirty = nearby.filter(entity =>
           game.has(entity, config.packet) &&
           game.delta.is_dirty(connection, entity, config.packet, config.threshold)
         )
+        
+        if (config.packet === 'projectile') {
+          dirty = dirty.filter(projectile_entity => {
+            const projectile = game.get(projectile_entity, 'projectile')
+            return projectile ? projectile.owner !== entity : true
+          })
+        }
         
         if (dirty.length === 0) continue
       

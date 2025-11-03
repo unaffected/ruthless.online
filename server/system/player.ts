@@ -10,7 +10,7 @@ export const system: System = {
     const entity = game.connections.get(connection)!
     
     game.add(entity, 'sync')
-    game.add(entity, 'input', { packed: 0, sequence: 0 })
+    game.add(entity, 'input', { packed: 0, sequence: 0, mouse_x: 0, mouse_y: 0 })
     game.add(entity, 'position', { x: 50.0, y: 25.0 })
     game.add(entity, 'velocity', { x: 0.0, y: 0.0 })
     game.add(entity, 'rotation', { value: 0.0 })
@@ -19,7 +19,7 @@ export const system: System = {
     game.add(entity, 'movement', { speed: 6.0 })
     
     game.collider.spawn('circle', entity, {
-      radius: 20,
+      radius: 12,
       options: {
         collisionFilter: game.config.collision.COLLISION_FILTER.PLAYER,
         isStatic: false,

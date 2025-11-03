@@ -24,7 +24,7 @@ declare module '@/game/system/event' {
 declare module '@/game' { 
   interface Game {
     connections: Map<Connection, number>
-    observers: Map<Connection, () => ArrayBuffer>
+    observers: Map<Connection, (entities?: number[]) => ArrayBuffer>
     server: Bun.Server<Socket>
     send: <P extends TYPE>(connection: Connection, type: P, entities: number[]) => void
   }
@@ -109,7 +109,7 @@ export const system: System = {
           
           const entities = game.packet.registry.get('entities')!
 
-          game.observers.set(connection, entities.serializer(game) as () => ArrayBuffer)
+          game.observers.set(connection, entities.serializer(game) as (entities?: number[]) => ArrayBuffer)
 
           game.send(connection, 'connected', [entity])
 
@@ -129,7 +129,11 @@ export const system: System = {
       
       if (!observer) continue
       
-      const entities = observer()
+      const entities = observer(game.query([game.components.sync]).filter(other_entity => {
+        const projectile = game.get(other_entity, 'projectile')
+        
+        return projectile ? projectile.owner !== entity : true
+      }))
 
       if (entities && entities.byteLength > 0) {
         const buffer = new Uint8Array(entities.byteLength + 1)

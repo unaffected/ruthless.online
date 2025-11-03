@@ -18,9 +18,25 @@ export const system: System = {
 
     game.on('client:player:connected', () => {
       console.debug('[client:player] connected to server')
+    })
+  },
+  tick: async (game) => {
+    const players = game.query({
+      all: ['movement', 'position'],
+      none: ['projectile']
+    })
+    
+    for (const entity of players) {
+      if (game.collider.bodies.has(entity)) continue
+
+      const position = game.get(entity, 'position')
+
+      if (!position) continue
       
-      game.collider.spawn('circle', game.entity, {
-        radius: 20,
+      game.collider.spawn('circle', entity, {
+        radius: 18,
+        x: position.x,
+        y: position.y,
         options: {
           collisionFilter: game.config.collision.COLLISION_FILTER.PLAYER,
           isStatic: false,
@@ -33,9 +49,8 @@ export const system: System = {
           inertia: Infinity,
         }
       })
-    })
-  },
-  tick: async (game) => {
+    }
+    
     if (!game.active_player()) return
 
     if (game.prediction?.enabled && game.prediction.snapshot) {

@@ -9,6 +9,10 @@ export const system: System = {
       if (typeof game.entity !== 'number') return
 
       game.action('move', game.entity, game.input.state)
+      
+      if (game.input.state.ACTION_1) {
+        game.action('shoot', game.entity, game.input.state)
+      }
     })
   }
 }

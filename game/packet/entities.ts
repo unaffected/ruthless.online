@@ -12,7 +12,7 @@ export const packet: PacketDefinition<'entities'> = {
   serializer: (game) => {
     const observer = create_observer()
 
-    return () => observer.serialize(game.query([game.components.sync]))
+    return (entities?: number[]) => observer.serialize(entities ?? game.query([game.components.sync]))
   },
   deserializer: (game) => {
     const observer = create_observer()

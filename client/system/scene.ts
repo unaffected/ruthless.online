@@ -41,16 +41,20 @@ export const system: System<ApplicationOptions> = {
     window.document.body.appendChild(game.scene.canvas)
   },
   tick: async (game) => {
-    const players = game.query([game.components.position])
+    const entities = game.query([game.components.position])
 
-    for (const entity of players) {
+    for (const entity of entities) {
       if (!game.graphics.has(entity)) {
-        game.graphic.spawn('player', entity)
+        if (game.has(entity, 'projectile')) {
+          game.graphic.spawn('projectile', entity)
+        } else {
+          game.graphic.spawn('player', entity)
+        }
       }
     }
 
     for (const [entity] of game.graphics) {
-      if (!players.includes(entity)) {
+      if (!entities.includes(entity)) {
         game.graphic.despawn(entity)
       }
     }
