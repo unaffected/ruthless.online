@@ -1,0 +1,594 @@
+---
+description: File structure, import patterns, and code organization conventions
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: true
+---
+
+# Code Organization
+
+This document outlines file structure, import patterns, module organization, and export conventions used in the Ruthless codebase.
+
+## File Structure
+
+### One Concept Per File
+
+Each file should export one primary concept with a clear, singular responsibility:
+
+```typescript
+// ✅ Good - game/system/physics.ts
+export const system: System = { /* physics logic */ }
+export default system
+
+// ✅ Good - game/component/position.ts
+export const component = { x: Float32Array, y: Float32Array }
+
+// ✅ Good - game/action/move.ts
+export const action: Action<'move'> = { /* move logic */ }
+export default action
+
+// ❌ Bad - physics_and_collision.ts
+export const physics_system: System = { }
+export const collision_system: System = { }
+```
+
+### File Naming
+
+Use snake_case for file names (except React components):
+
+```bash
+# ✅ Good - System files
+game/system/physics.ts
+game/system/collision.ts
+client/system/network.ts
+server/system/controller.ts
+
+# ✅ Good - Component files
+game/component/position.ts
+game/component/velocity.ts
+game/component/health.ts
+
+# ✅ Good - Action files
+game/action/move.ts
+game/action/attack.ts
+
+# ✅ Good - Packet files
+game/packet/position.ts
+game/packet/velocity.ts
+
+# ✅ Good - Utility files
+game/utility/input.ts
+game/utility/binary.ts
+
+# ✅ Good - React components (PascalCase)
+client/canvas/component/Button.tsx
+client/canvas/component/PlayerCard.tsx
+
+# ❌ Bad
+game/system/Physics.ts
+game/component/positionComponent.ts
+game/action/MoveAction.ts
+```
+
+## Directory Structure
+
+### Domain-Based Organization
+
+```
+ruthless/
+├── game/              # Shared game logic
+│   ├── action/        # Player actions
+│   │   ├── index.ts   # Export all actions
+│   │   └── move.ts    # Individual action
+│   ├── component/     # ECS components
+│   │   ├── index.ts   # Export all components
+│   │   └── position.ts
+│   ├── packet/        # Network packets
+│   │   ├── index.ts   # Export all packets
+│   │   └── position.ts
+│   ├── system/        # Game systems
+│   │   ├── index.ts   # Export all systems
+│   │   └── physics.ts
+│   └── utility/       # Helper functions
+│       ├── binary.ts
+│       └── input.ts
+├── client/            # Client-specific
+│   ├── system/        # Client systems
+│   ├── graphic/       # PixiJS graphics
+│   └── canvas/        # React UI
+└── server/            # Server-specific
+    └── system/        # Server systems
+```
+
+### Index Files for Aggregation
+
+Use `index.ts` to export related modules:
+
+```typescript
+// ✅ Good - game/action/index.ts
+import move from './move'
+// Import other actions...
+
+export const actions = [move]
+export default actions
+
+// ✅ Good - game/component/index.ts
+export { component as collider } from './collider'
+export { component as position } from './position'
+export { component as velocity } from './velocity'
+
+// ✅ Good - game/system/index.ts
+import event from './event'
+import action from './action'
+import physics from './physics'
+
+export default [event, action, physics]
+```
+
+## Import Patterns
+
+### Path Aliases
+
+Always use `@/` prefix for absolute imports:
+
+```typescript
+// ✅ Good - Absolute imports with @/
+import { Game } from '@/game'
+import network from '@/client/system/network'
+import { spawn_entity } from '@/game/utility/entity'
+import type { System } from '@/game'
+
+// ❌ Bad - Relative paths
+import { Game } from '../../../game'
+import network from './network'
+import { spawn_entity } from '../utility/entity'
+```
+
+### Import Organization
+
+Group imports by source with NO BLANK LINES AND NO COMMENTS between groups. External library first and unamed imports last.
+
+```typescript
+import Matter from 'matter-js'
+import * as PIXI from 'pixi.js'
+import type { System } from '@/game'
+import type { Connection } from '@/server/system/network'
+import event from '@/game/system/event'
+import network from '@/server/system/network'
+import * as input from '@/game/utility/input'
+import * as packet from '@/game/utility/packet'
+```
+
+### Type-Only Imports
+
+Use `import type` for type-only imports:
+
+```typescript
+// ✅ Good - Separate type imports
+import type { System } from '@/game'
+import type { Connection } from '@/server/system/network'
+import event from '@/game/system/event'
+
+// ⚠️ Acceptable but less clear
+import { type System } from '@/game'
+
+// ❌ Bad - Mixing types and values ambiguously
+import { System, Game } from '@/game'  // Are these types or values?
+```
+
+## Export Patterns
+
+### Named and Default Exports
+
+Export both named and default for flexibility:
+
+```typescript
+// ✅ Good - Both exports
+export const system: System = {
+  id: 'game:physics',
+  // ...
+}
+
+export default system
+
+// Usage - either style works
+import physics from '@/game/system/physics'
+import { system as physics } from '@/game/system/physics'
+```
+
+### Component Pattern
+
+```typescript
+// game/component/position.ts
+
+// 1. Augment global types
+declare module '@/game' { 
+  interface Components { 
+    position: typeof component 
+  }
+}
+
+// 2. Define component ID
+export const id = 'position' as const
+
+// 3. Export component structure
+export const component = {
+  x: new Float32Array([]),
+  y: new Float32Array([])
+}
+
+// No default export for components
+```
+
+### System Pattern
+
+```typescript
+// game/system/physics.ts
+
+// 1. Import dependencies
+import { type System } from '@/game'
+import Matter from 'matter-js'
+
+// 2. Augment global types
+declare module '@/game' { 
+  interface Game { 
+    physics: { engine: Matter.Engine } 
+  } 
+}
+
+// 3. Define options type (if needed)
+export interface PhysicsOptions {
+  flush_rate: number
+  engine: Matter.IEngineDefinition
+}
+
+// 4. Export system
+export const system: System<PhysicsOptions> = {
+  id: 'game:physics',
+  dependencies: [],
+  options: { /* defaults */ },
+  install: async (game, options) => { /* ... */ },
+  tick: async (game, delta, options) => { /* ... */ }
+}
+
+// 5. Default export
+export default system
+```
+
+### Action Pattern
+
+```typescript
+// game/action/move.ts
+
+// 1. Import dependencies
+import type { Action } from '@/game/system/action'
+import type { State } from '@/game/utility/input'
+
+// 2. Augment global types
+declare module '@/game/system/action' { 
+  interface Actions { 
+    move: MoveAction 
+  } 
+}
+
+// 3. Define action parameters type
+export type MoveAction = State
+
+// 4. Export action
+export const action: Action<'move'> = {
+  id: 'move',
+  execute: (game, entity, params) => { /* ... */ }
+}
+
+// 5. Default export
+export default action
+```
+
+### Packet Pattern
+
+```typescript
+// game/packet/position.ts
+
+// 1. Import dependencies
+import { create_soa_serializer, create_soa_deserializer } from '@/game/utility/serialization'
+import { PACKET } from '@/game/utility/packet'
+import type { PacketDefinition } from '@/game/system/packet'
+
+// 2. Augment global types
+declare module '@/game/system/packet' { 
+  interface Packets { 
+    position: number[] 
+  } 
+}
+
+// 3. Export packet definition
+export const packet: PacketDefinition<'position'> = {
+  id: 'position',
+  type: PACKET.POSITION,
+  serializer: (game) => create_soa_serializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+  deserializer: (game) => create_soa_deserializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+}
+
+// 4. Default export
+export default packet
+```
+
+## Module Augmentation
+
+Augment core types at the top of files that add functionality.
+
+### Game Interface
+
+```typescript
+// At top of file
+declare module '@/game' {
+  interface Game {
+    input: InputState
+    socket: WebSocket
+    entity: number
+  }
+}
+
+// Then implement in same file
+export const system: System = {
+  install: async (game) => {
+    game.input = create_input_state()
+    game.socket = new WebSocket('/socket')
+    game.entity = 0
+  }
+}
+```
+
+### Event Interface
+
+```typescript
+// At top of file
+declare module '@/game/system/event' {
+  interface Events {
+    'client:controller:input': { 
+      sequence: number
+      state: State
+    }
+  }
+}
+
+// Then use in same file
+game.emit('client:controller:input', { sequence, state })
+```
+
+### Components Interface
+
+```typescript
+// At top of file
+declare module '@/game' { 
+  interface Components { 
+    position: typeof component 
+  }
+}
+
+// Then define in same file
+export const component = {
+  x: new Float32Array([]),
+  y: new Float32Array([])
+}
+```
+
+## Utility Modules
+
+Utility modules export helper functions without default export:
+
+```typescript
+// ✅ Good - game/utility/input.ts
+export type State = {
+  UP: boolean
+  DOWN: boolean
+  LEFT: boolean
+  RIGHT: boolean
+}
+
+export const pack = (state: State): number => { /* ... */ }
+export const unpack = (packed: number): State => { /* ... */ }
+
+// No default export
+
+// Usage
+import * as input from '@/game/utility/input'
+
+const packed = input.pack(state)
+const state = input.unpack(packed)
+```
+
+## Configuration Files
+
+### tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+### package.json
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch server/index.tsx",
+    "start": "NODE_ENV=production bun server/index.tsx",
+    "build": "bun run build.ts"
+  }
+}
+```
+
+## Logging Conventions
+
+### Namespaced Logging
+
+Include system ID in all log messages:
+
+```typescript
+// ✅ Good - Matches system ID
+console.debug('[client:controller] system initialized')
+console.log('[game:physics] processing 150 entities')
+console.warn('[server:network] connection timeout')
+console.error('[client:prediction] rollback failed', error)
+
+// ❌ Bad - Inconsistent or missing namespace
+console.log('initialized')
+console.log('[Controller] initialized')
+console.log('client-controller initialized')
+```
+
+### Log Levels
+
+Use appropriate log levels:
+
+```typescript
+// Debug - Detailed info for development
+console.debug('[client:controller] input sequence:', sequence)
+
+// Log - Normal operation
+console.log('[game:physics] engine started')
+
+// Warn - Recoverable issues
+console.warn('[server:controller] rate limited:', entity)
+
+// Error - Serious problems
+console.error('[client:network] connection failed:', error)
+```
+
+## Comments and Documentation
+
+### When to Comment
+
+Comment "why" not "what":
+
+```typescript
+// ✅ Good - Explains why
+// Rollback to server state and replay pending inputs
+// This corrects client prediction when it diverges from server
+const rollback = (game: Game, entity: number, server: Snapshot) => {
+  restore(game, entity, server)
+  replay_inputs(game, entity)
+}
+
+// ❌ Bad - States the obvious
+// This function rolls back
+const rollback = (game: Game, entity: number, server: Snapshot) => {
+  restore(game, entity, server)
+}
+
+// ✅ Good - Explains complex algorithm
+// Use entity packing: [20-bit index | 12-bit version]
+// This allows recycling entity IDs while detecting stale references
+const entity = (index << 12) | version
+```
+
+### Type Documentation
+
+Document complex types:
+
+```typescript
+// ✅ Good - Document purpose and constraints
+/**
+ * Client prediction state.
+ * 
+ * Stores input history and snapshots for reconciliation with server.
+ * History size should match network latency + jitter buffer.
+ */
+export type PredictionState = {
+  history: Prediction[]
+  history_size: number
+  last_server_sequence: number
+}
+```
+
+## Best Practices Summary
+
+1. **One concept per file** - Clear, focused modules
+2. **Use path aliases** - `@/` for all internal imports
+3. **Both exports** - Named and default for flexibility
+4. **Module augmentation** - Extend types where functionality is added
+5. **Index files** - Aggregate related modules
+6. **Consistent patterns** - Follow component/system/action/packet patterns
+7. **Namespaced logging** - Include system ID in all logs
+8. **Group imports** - External, types, modules, utilities
+9. **Comment why** - Not what the code does, but why
+10. **Domain separation** - Keep `game/`, `client/`, `server/` distinct
+
+## File Templates
+
+### System Template
+
+```typescript
+import { type System } from '@/game'
+
+declare module '@/game' {
+  interface Game {
+    // Add state here
+  }
+}
+
+export const system: System = {
+  id: 'domain:name',
+  dependencies: [],
+  install: async (game) => {
+    // Initialize
+  },
+  tick: async (game, delta) => {
+    // Update logic
+  }
+}
+
+export default system
+```
+
+### Component Template
+
+```typescript
+declare module '@/game' { 
+  interface Components { 
+    name: typeof component 
+  }
+}
+
+export const id = 'name' as const
+
+export const component = {
+  field: new Float32Array([])
+}
+```
+
+### Action Template
+
+```typescript
+import type { Action } from '@/game/system/action'
+
+declare module '@/game/system/action' { 
+  interface Actions { 
+    name: ParamsType 
+  } 
+}
+
+export type ParamsType = { /* ... */ }
+
+export const action: Action<'name'> = {
+  id: 'name',
+  execute: (game, entity, params) => {
+    // Logic
+  }
+}
+
+export default action
+```

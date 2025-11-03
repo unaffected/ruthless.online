@@ -1,0 +1,457 @@
+---
+description: Naming conventions for functions, variables, constants, and identifiers
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: true
+---
+
+# Naming Conventions
+
+This document outlines the naming conventions used throughout the Ruthless codebase.
+
+## General Rule: snake_case
+
+Use `snake_case` for all identifiers including:
+- Functions and methods
+- Variables and parameters  
+- Object properties
+- File names
+- Type aliases and interfaces (when not exported as types)
+
+```typescript
+// ✅ Good
+function spawn_entity() { }
+const movement_speed = 5.0
+const player_data = { position_x: 0, position_y: 0 }
+let is_active = false
+
+// ❌ Bad
+function spawnEntity() { }
+const movementSpeed = 5.0
+const playerData = { positionX: 0, positionY: 0 }
+let isActive = false
+```
+
+### Function Names
+
+```typescript
+// ✅ Good
+export function create_player(name: string) { }
+export function calculate_damage(base: number, modifier: number) { }
+export function has_component(entity: number, component: string) { }
+export async function load_assets() { }
+
+// ❌ Bad
+export function createPlayer(name: string) { }
+export function calculateDamage(base: number, modifier: number) { }
+export function hasComponent(entity: number, component: string) { }
+export async function loadAssets() { }
+```
+
+### Variable Names
+
+```typescript
+// ✅ Good
+const entity_count = 100
+const current_position = { x: 0, y: 0 }
+const player_velocity = game.get(entity, 'velocity')
+let is_connected = false
+let should_render = true
+
+// ❌ Bad
+const entityCount = 100
+const currentPosition = { x: 0, y: 0 }
+const playerVelocity = game.get(entity, 'velocity')
+let isConnected = false
+let shouldRender = true
+```
+
+### Object Properties
+
+```typescript
+// ✅ Good
+const config = {
+  max_players: 64,
+  spawn_rate: 1000,
+  default_speed: 100,
+  enable_physics: true
+}
+
+const component = {
+  health_current: 100,
+  health_maximum: 100,
+  damage_taken: 0
+}
+
+// ❌ Bad
+const config = {
+  maxPlayers: 64,
+  spawnRate: 1000,
+  defaultSpeed: 100,
+  enablePhysics: true
+}
+```
+
+### Method Names
+
+```typescript
+// ✅ Good
+class Game {
+  spawn_entity(): number { }
+  get_component(entity: number, name: string) { }
+  has_system(id: string): boolean { }
+}
+
+// ❌ Bad
+class Game {
+  spawnEntity(): number { }
+  getComponent(entity: number, name: string) { }
+  hasSystem(id: string): boolean { }
+}
+```
+
+## SCREAMING_SNAKE_CASE for Constants
+
+Use `SCREAMING_SNAKE_CASE` for compile-time constants and enum-like values:
+
+```typescript
+// ✅ Good
+export const MAX_PLAYERS = 64
+export const DEFAULT_SPEED = 100
+export const GRAVITY_CONSTANT = 9.8
+export const ENTITY_INDEX_BITS = 20
+export const ENTITY_VERSION_BITS = 12
+export const ENTITY_MAX_INDEX = (1 << ENTITY_INDEX_BITS) - 1
+
+export const PACKET = {
+  SNAPSHOT: 0,
+  SYNC: 1,
+  UPDATE: 2,
+  POSITION: 3,
+  VELOCITY: 4,
+} as const
+
+// ❌ Bad
+export const maxPlayers = 64
+export const defaultSpeed = 100
+```
+
+### When to Use SCREAMING_SNAKE_CASE
+
+Use for:
+- **Numeric constants** - `MAX_ENTITIES`, `DEFAULT_SPEED`
+- **String constants** - `DEFAULT_NAME`, `ERROR_MESSAGE`
+- **Enum-like objects** - `PACKET.POSITION`, `STATE.IDLE`
+- **Bit flags** - `FLAG_VISIBLE`, `FLAG_ACTIVE`
+- **Configuration constants** - `DEBUG_MODE`, `API_URL`
+
+Don't use for:
+- **Runtime values** - `current_time`, `entity_count`
+- **Function results** - `calculated_damage`, `spawn_point`
+- **Object instances** - `player_data`, `game_state`
+
+## lowercase:colon for Namespaced Strings
+
+Use colon-separated lowercase for system IDs, event names, and other namespaced identifiers:
+
+### System IDs
+
+Format: `domain:system`
+
+```typescript
+// ✅ Good - System IDs
+export const system: System = {
+  id: 'game:physics',
+  // ...
+}
+
+export const system: System = {
+  id: 'client:controller',
+  // ...
+}
+
+export const system: System = {
+  id: 'server:player',
+  // ...
+}
+
+// ❌ Bad
+export const system: System = {
+  id: 'gamePhysics',  // camelCase
+  id: 'game_physics', // snake_case (use : not _)
+  id: 'Game:Physics', // PascalCase
+}
+```
+
+**Domains**:
+- `game:*` - Shared game logic
+- `client:*` - Client-only systems
+- `server:*` - Server-only systems
+
+### Event Names
+
+Format: `domain:system:event`
+
+```typescript
+// ✅ Good - Event names
+game.emit('client:controller:input', data)
+game.emit('server:player:connected', connection)
+game.emit('game:entity:spawned', entity)
+game.emit('client:prediction:reconcile', { entity, divergence })
+
+game.on('server:controller:throttled', handler)
+game.on('client:player:connected', handler)
+
+// ❌ Bad
+game.emit('clientControllerInput', data)
+game.emit('Server:Player:Connected', connection)
+game.emit('game_entity_spawned', entity)
+```
+
+### Component IDs
+
+```typescript
+// ✅ Good - Short, lowercase
+export const id = 'position' as const
+export const id = 'velocity' as const
+export const id = 'health' as const
+
+// ❌ Bad
+export const id = 'Position' as const      // PascalCase
+export const id = 'player_health' as const // Use short name
+```
+
+### Logging Prefixes
+
+```typescript
+// ✅ Good - Matches system ID
+console.debug('[client:controller] system initialized')
+console.warn('[server:network] connection timeout')
+console.error('[game:physics] invalid body state')
+
+// ❌ Bad
+console.log('[ClientController] initialized')
+console.log('[server-network] timeout')
+```
+
+## Exceptions: External Libraries
+
+Keep external library conventions unchanged. Don't translate their APIs to snake_case:
+
+### React
+
+```typescript
+// ✅ Good - Keep React conventions
+import { useState, useEffect } from 'react'
+
+export function PlayerCard() {
+  const [health, setHealth] = useState(100)
+  
+  useEffect(() => {
+    // Effect logic
+  }, [health])
+  
+  return <div className="player-card" />
+}
+
+// ❌ Bad - Don't translate React
+const [health, set_health] = use_state(100)
+```
+
+### PixiJS
+
+```typescript
+// ✅ Good - Keep PixiJS conventions
+import * as PIXI from 'pixi.js'
+
+const sprite = new PIXI.Sprite(texture)
+sprite.position.set(100, 200)
+stage.addChild(sprite)
+container.removeChild(sprite)
+
+// ❌ Bad
+stage.add_child(sprite)
+container.remove_child(sprite)
+```
+
+### Matter.js
+
+```typescript
+// ✅ Good - Keep Matter.js conventions
+import Matter from 'matter-js'
+
+const engine = Matter.Engine.create()
+const body = Matter.Bodies.rectangle(x, y, w, h)
+Matter.Body.setVelocity(body, { x: vx, y: vy })
+Matter.Composite.add(engine.world, body)
+
+// ❌ Bad
+const engine = Matter.Engine.create()
+Matter.Body.set_velocity(body, { x: vx, y: vy })
+```
+
+### Bun
+
+```typescript
+// ✅ Good - Keep Bun conventions
+Bun.serve({ port: 3000, fetch: handler })
+const file = Bun.file(path)
+await Bun.write(file, data)
+
+// ❌ Bad
+bun.serve({ port: 3000, fetch: handler })
+```
+
+### TypeScript Standard Library
+
+```typescript
+// ✅ Good - Keep standard APIs
+const map = new Map()
+map.set(key, value)
+map.delete(key)
+
+const set = new Set()
+set.add(item)
+set.has(item)
+
+const array = Array.from(iterable)
+const sorted = array.sort()
+
+// ❌ Bad
+map.delete_key(key)
+set.has_item(item)
+```
+
+## File Names
+
+### Source Files
+
+Use snake_case for TypeScript/JavaScript files:
+
+```bash
+# ✅ Good
+game/system/physics.ts
+game/component/position.ts
+game/action/move.ts
+client/system/network.ts
+server/system/player.ts
+
+# ❌ Bad
+game/system/Physics.ts
+game/component/positionComponent.ts
+game/action/moveAction.ts
+```
+
+### React Component Files
+
+Use PascalCase for React component files:
+
+```bash
+# ✅ Good (if they are React components)
+client/canvas/component/Button.tsx
+client/canvas/component/PlayerCard.tsx
+
+# ✅ Good (if they are not React components)
+client/system/canvas.tsx
+client/graphic/player.ts
+```
+
+## Type Names
+
+### Exported Types
+
+Exported types can use PascalCase when they represent classes or major concepts:
+
+```typescript
+// ✅ Good - Major types
+export type System = { /* ... */ }
+export type Game = { /* ... */ }
+export type Action<K> = { /* ... */ }
+export type Component<C> = { /* ... */ }
+
+// ✅ Also good - snake_case for type aliases
+export type entity_id = number
+export type component_data = Record<string, number>
+```
+
+### Internal Types
+
+Internal and utility types typically use snake_case:
+
+```typescript
+// ✅ Good
+type prediction_state = {
+  history: Prediction[]
+  last_sequence: number
+}
+
+type input_handler = (state: State) => void
+```
+
+## Boolean Variables
+
+Prefix boolean variables with `is_`, `has_`, `should_`, `can_`, or `will_`:
+
+```typescript
+// ✅ Good
+let is_active = true
+let has_component = game.has(entity, 'position')
+let should_render = entity_visible && in_viewport
+let can_move = !is_frozen && has_velocity
+let will_collide = check_collision(entity, target)
+
+// ❌ Bad
+let active = true
+let component = game.has(entity, 'position')  // Confusing
+let render = entity_visible && in_viewport   // Looks like function
+```
+
+## Private/Internal Indicators
+
+TypeScript/JavaScript doesn't have true private fields in all contexts. Use the `private` modifier where you can, but prefer public properties and methods:
+
+```typescript
+// ✅ Good - Private class method
+class Game {
+  private purge(entity: number): void { }
+}
+```
+
+## Abbreviations
+
+Avoid abbreviations unless they are well-known:
+
+```typescript
+// ✅ Good - Well-known abbreviations
+const max_hp = 100
+const min_damage = 10
+const entity_id = 123
+const html_element = document.createElement('div')
+const url_path = '/api/players'
+
+// ✅ Good - Full words
+const maximum_velocity = 500
+const current_position = { x: 0, y: 0 }
+const entity_count = entities.length
+
+// ❌ Bad - Unclear abbreviations
+const max_vel = 500    // Use maximum_velocity
+const cur_pos = { }    // Use current_position
+const ent_cnt = 10     // Use entity_count
+```
+
+## Summary
+
+| Context | Convention | Example |
+|---------|-----------|---------|
+| Functions | snake_case | `spawn_entity()` |
+| Variables | snake_case | `player_health` |
+| Properties | snake_case | `{ max_speed: 100 }` |
+| Constants | SCREAMING_SNAKE_CASE | `MAX_PLAYERS` |
+| System IDs | domain:system | `'client:controller'` |
+| Event Names | domain:system:event | `'game:entity:spawned'` |
+| File Names | snake_case | `physics.ts` |
+| React Components | PascalCase | `Button.tsx` |
+| External APIs | Keep original | `useState()`, `addChild()` |
+| Booleans | Prefix + snake_case | `is_active`, `has_velocity` |
+
+**Golden Rule**: Use snake_case everywhere except for constants (SCREAMING_SNAKE_CASE), namespaced strings (lowercase:colon), and external library APIs (keep their conventions).

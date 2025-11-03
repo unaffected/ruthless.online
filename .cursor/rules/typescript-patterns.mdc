@@ -1,0 +1,482 @@
+---
+description: TypeScript patterns including module augmentation, type-first development, and strict mode
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: true
+---
+
+# TypeScript Patterns
+
+This document outlines TypeScript patterns and best practices used in the Ruthless codebase.
+
+## Strict Mode Configuration
+
+The project uses TypeScript strict mode with additional safety features:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true
+  }
+}
+```
+
+**What this means**:
+- All types must be explicit (no implicit `any`)
+- Null and undefined handled explicitly
+- Array/object access returns `T | undefined`
+- Use optional chaining and nullish coalescing
+
+## Module Augmentation Pattern
+
+Module augmentation is the primary pattern for extending core types when adding functionality.
+
+### Extending the Game Interface
+
+When a system adds new properties to `game`, declare them using module augmentation:
+
+```typescript
+// At the top of your system file
+declare module '@/game' {
+  interface Game {
+    physics: { engine: Matter.Engine }
+  }
+}
+
+// Then implement in the same file
+export const system: System = {
+  id: 'game:physics',
+  install: async (game) => {
+    game.physics = { engine: Matter.Engine.create() }
+  },
+  tick: async (game, delta) => {
+    Matter.Engine.update(game.physics.engine, delta)
+  }
+}
+```
+
+**Benefits**:
+- Type-safe access throughout codebase
+- IDE autocomplete for `game.physics`
+- No wrapper classes needed
+- Centralized in the file that adds functionality
+
+### Extending Event Types
+
+When a system emits events, declare their types:
+
+```typescript
+declare module '@/game/system/event' {
+  interface Events {
+    'server:controller:input': { 
+      connection: Connection
+      entity: number
+      state: input.State
+      sequence: number
+    }
+    'server:controller:throttled': {
+      connection: Connection
+      entity: number
+    }
+  }
+}
+
+// Usage is now type-safe
+game.emit('server:controller:input', {
+  connection,
+  entity,
+  state,
+  sequence
+})
+
+game.on('server:controller:input', (event) => {
+  // event is properly typed with all properties
+  console.log(event.sequence)
+})
+```
+
+### Extending Component Types
+
+When creating a component, augment the `Components` interface:
+
+```typescript
+declare module '@/game' { 
+  interface Components { 
+    position: typeof component 
+  }
+}
+
+export const component = {
+  x: new Float32Array([]),
+  y: new Float32Array([])
+}
+
+// Now game.get(entity, 'position') returns { x: number, y: number } | undefined
+```
+
+### Extending Action Types
+
+When creating an action, augment the `Actions` interface:
+
+```typescript
+declare module '@/game/system/action' { 
+  interface Actions { 
+    move: MoveAction 
+  } 
+}
+
+export type MoveAction = State
+
+// Now game.action('move', entity, state) is type-checked
+```
+
+### Extending Packet Types
+
+When creating a packet, augment the `Packets` interface:
+
+```typescript
+declare module '@/game/system/packet' { 
+  interface Packets { 
+    position: number[] 
+  } 
+}
+
+// Packet registry is now aware of 'position' type
+```
+
+## Type-First Development
+
+Define interfaces before implementation to establish contracts.
+
+### Define the Contract
+
+```typescript
+// Define what an Action is
+export type Action<K extends ACTION = ACTION> = {
+  id: K
+  execute: (game: Game, entity: number, params: Actions[K]) => void
+}
+
+// Define the Actions interface (augmented per action)
+export interface Actions {}
+
+// Define ACTION as keys of Actions
+export type ACTION = keyof Actions
+```
+
+### Then Implement
+
+```typescript
+// Augment with specific action
+declare module '@/game/system/action' { 
+  interface Actions { 
+    move: MoveAction 
+  } 
+}
+
+export type MoveAction = State
+
+// Implementation is type-checked against contract
+export const action: Action<'move'> = {
+  id: 'move',
+  execute: (game, entity, params) => {
+    // params is correctly typed as MoveAction (aka State)
+    if (params.LEFT) { /* ... */ }
+  }
+}
+```
+
+## Guard Clauses
+
+Use early returns to reduce nesting and handle undefined values:
+
+```typescript
+// ✅ Good - Early returns
+function update_entity(entity: number) {
+  const player = game.get(entity, 'player')
+  if (!player) return
+  
+  const velocity = game.get(entity, 'velocity')
+  if (!velocity) return
+  
+  // Both player and velocity are guaranteed to exist here
+  player.position_x += velocity.x
+  player.position_y += velocity.y
+}
+
+// ❌ Avoid - Deep nesting
+function update_entity(entity: number) {
+  const player = game.get(entity, 'player')
+  if (player) {
+    const velocity = game.get(entity, 'velocity')
+    if (velocity) {
+      player.position_x += velocity.x
+      player.position_y += velocity.y
+    }
+  }
+}
+```
+
+### Guard Against Missing Entities
+
+```typescript
+// Check entity exists before operations
+if (!game.exists(entity)) return
+
+// Check entity has required component
+if (!game.has(entity, 'position')) return
+```
+
+### Guard Against Empty Collections
+
+```typescript
+const entities = game.query([game.components.position])
+if (entities.length === 0) return
+
+for (const entity of entities) {
+  // Process...
+}
+```
+
+## Optional Chaining and Nullish Coalescing
+
+Use `?.` for safe property access and `??` for default values:
+
+```typescript
+// ✅ Good - Safe chaining with defaults
+const color = options?.color ?? 0xFF0000
+const speed = config?.movement?.speed ?? 100
+const name = player?.name ?? 'Unknown'
+
+// Access nested properties safely
+const x = entity?.position?.x ?? 0
+
+// Call methods safely
+const result = handler?.(data)
+
+// ✅ Good - Array access with defaults
+const first = items[0] ?? default_item
+const value = map.get(key) ?? default_value
+```
+
+## Type Narrowing
+
+Use type guards and checks to narrow types:
+
+```typescript
+// Type narrowing with typeof
+function process_value(value: string | number) {
+  if (typeof value === 'string') {
+    return value.toUpperCase()  // value is string here
+  }
+  return value.toFixed(2)  // value is number here
+}
+
+// Type narrowing with in operator
+function has_velocity(entity: number): boolean {
+  const obj = game.get(entity, 'velocity')
+  if (!obj) return false
+  
+  return 'x' in obj && 'y' in obj
+}
+
+// Type narrowing with custom guard
+function is_player_entity(entity: number): boolean {
+  return game.has(entity, 'player')
+}
+```
+
+## Const Assertions
+
+Use `as const` for literal type inference:
+
+```typescript
+// ✅ Good - Const assertion for enum-like objects
+export const PACKET = {
+  SNAPSHOT: 0,
+  SYNC: 1,
+  UPDATE: 2,
+  POSITION: 3,
+  VELOCITY: 4,
+} as const
+
+// Type is: { readonly SNAPSHOT: 0, readonly SYNC: 1, ... }
+// Not: { SNAPSHOT: number, SYNC: number, ... }
+
+// ✅ Good - Const assertion for tuple types
+const point = [100, 200] as const
+// Type is: readonly [100, 200]
+// Not: number[]
+```
+
+## Generic Constraints
+
+Use generic constraints to enforce type relationships:
+
+```typescript
+// Generic System with options type
+export type System<O = any> = {
+  id: string
+  options?: O
+  install?: (game: Game, options: O) => Promise<void>
+  tick?: (game: Game, delta: number, options: O) => Promise<void>
+}
+
+// Generic Action with key constraint
+export type Action<K extends ACTION = ACTION> = {
+  id: K
+  execute: (game: Game, entity: number, params: Actions[K]) => void
+}
+
+// Generic Packet with key constraint
+export type PacketDefinition<K extends PACKET = PACKET> = {
+  id: K
+  type: number
+  serializer: (game: Game) => (entities: number[]) => ArrayBuffer
+  deserializer: (game: Game) => (data: ArrayBuffer, entities: Map<number, number>) => void
+}
+
+// Generic component access
+public get<C extends keyof Components>(entity: number, name: C): Component<C> | undefined {
+  // Return type is inferred from component name
+}
+```
+
+## Array and Object Handling
+
+Handle the fact that array/object access can return undefined:
+
+```typescript
+// ✅ Good - Check array access
+const first = entities[0]
+if (!first) return
+
+process_entity(first)
+
+// ✅ Good - Use optional chaining
+const value = array[index]?.property ?? default_value
+
+// ✅ Good - Check map access
+const entity = map.get(key)
+if (entity === undefined) continue
+
+// ✅ Good - Filter undefined values
+const valid_entities = entities
+  .map(id => game.get(id, 'position'))
+  .filter(pos => pos !== undefined)
+```
+
+## Explicit Return Types
+
+Prefer explicit return types for public APIs:
+
+```typescript
+// ✅ Good - Explicit return type
+export function spawn_player(game: Game, x: number, y: number): number {
+  const entity = game.spawn()
+  game.add(entity, 'position', { x, y })
+  game.add(entity, 'player')
+  return entity
+}
+
+// ✅ Good - Explicit promise type
+export async function load_assets(): Promise<void> {
+  await fetch_sprites()
+  await fetch_audio()
+}
+
+// ✅ Good - Explicit complex type
+export function query_players(game: Game): Array<{
+  entity: number
+  position: Component<'position'>
+  velocity: Component<'velocity'>
+}> {
+  const players = game.query([game.components.player])
+  return players.map(entity => ({
+    entity,
+    position: game.get(entity, 'position')!,
+    velocity: game.get(entity, 'velocity')!,
+  }))
+}
+```
+
+## Type Utilities
+
+Use TypeScript utility types effectively:
+
+```typescript
+// Partial for optional updates
+game.set(entity, 'position', { x: 100 })  // y is optional
+
+// Record for maps
+const entity_map: Record<string, number> = {}
+
+// Extract for union narrowing
+type SystemId = Extract<string, 'client:*' | 'server:*'>
+
+// Omit for excluding properties
+type ComponentData<C extends COMPONENT> = Omit<Components[C], 'capacity'>
+
+// Pick for selecting properties
+type Position2D = Pick<Component<'position'>, 'x' | 'y'>
+
+// NonNullable for removing null/undefined
+type Value = NonNullable<Component<'position'> | undefined>
+```
+
+## Avoid Type Assertions
+
+Only use type assertions when you have more information than TypeScript:
+
+```typescript
+// ❌ Avoid - Suppresses type checking
+const entity = data as number
+
+// ✅ Good - Validate and narrow type
+if (typeof data === 'number') {
+  const entity = data
+  process_entity(entity)
+}
+
+// ✅ Good - Use type guards
+function is_number(value: unknown): value is number {
+  return typeof value === 'number'
+}
+
+if (is_number(data)) {
+  process_entity(data)  // data is number here
+}
+
+// ⚠️  Acceptable - When you truly know more than TypeScript
+const body = world.bodies[0]!  // We just checked length > 0
+const entity = body.plugin.entity as number  // Foreign object property
+```
+
+## Template Literal Types
+
+Use template literal types for namespaced strings:
+
+```typescript
+// System IDs follow pattern: domain:system
+type SystemDomain = 'client' | 'server' | 'game'
+type SystemId = `${SystemDomain}:${string}`
+
+// Event names follow pattern: domain:system:event
+type EventName = `${SystemDomain}:${string}:${string}`
+
+// Component prefixes
+type ComponentType = `${string}_component`
+```
+
+## Best Practices Summary
+
+1. **Use module augmentation** - Don't create wrapper classes
+2. **Define types first** - Establish contracts before implementation
+3. **Guard early** - Return early to reduce nesting
+4. **Chain safely** - Use `?.` and `??` for optional values
+5. **Narrow types** - Use type guards to help TypeScript understand your code
+6. **Be explicit** - Prefer explicit return types for public APIs
+7. **Avoid assertions** - Use type guards and validation instead
+8. **Leverage strict mode** - Catch bugs at compile time

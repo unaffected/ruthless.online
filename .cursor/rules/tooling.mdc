@@ -1,0 +1,512 @@
+---
+description: Bun runtime usage, build tools, and development workflows
+globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json, build.ts, bunfig.toml"
+alwaysApply: false
+---
+
+# Tooling
+
+This document describes the development tools, build system, and runtime environment for Ruthless.
+
+## Bun Runtime
+
+Ruthless uses Bun as the primary runtime instead of Node.js for development and production.
+
+### Why Bun?
+
+- **Fast startup** - No compilation step needed
+- **Built-in TypeScript** - Native TS execution
+- **Fast bundler** - HTML, CSS, and TS bundling
+- **WebSocket support** - Built-in WebSocket server
+- **Module resolution** - Fast, correct ESM handling
+
+## Package Management
+
+### Use Bun Commands
+
+```bash
+# ✅ Good - Use Bun
+bun install
+bun add package-name
+bun remove package-name
+bun update
+
+# ❌ Bad - Don't use npm/pnpm/yarn
+npm install
+pnpm add package-name
+yarn add package-name
+```
+
+### Lock File
+
+Bun uses `bun.lock` (binary format):
+
+```bash
+# Committed to git
+bun.lock
+
+# Don't commit these
+node_modules/
+```
+
+## Running Code
+
+### Development
+
+```bash
+# ✅ Good - Run with Bun
+bun run dev
+bun --watch server/index.tsx
+
+# Direct execution
+bun game/index.ts
+bun client/index.tsx
+
+# ❌ Bad - Don't use Node.js
+node server/index.js
+ts-node server/index.ts
+```
+
+### Production
+
+```bash
+# ✅ Good - Production mode
+NODE_ENV=production bun server/index.tsx
+
+# Or via script
+bun start
+```
+
+## Scripts
+
+Defined in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "bun --watch server/index.tsx",
+    "start": "NODE_ENV=production bun server/index.tsx",
+    "build": "bun run build.ts"
+  }
+}
+```
+
+### Development Server
+
+```bash
+# Start dev server with hot reload
+bun run dev
+
+# Bun watches files and restarts on changes
+# No need for nodemon or tsx
+```
+
+### Build
+
+```bash
+# Build client assets
+bun run build
+
+# This runs build.ts which bundles HTML/CSS/TS
+```
+
+## Building Assets
+
+Bun has a built-in bundler that handles HTML, CSS, and TypeScript:
+
+```typescript
+// build.ts
+await Bun.build({
+  entrypoints: ['./client/canvas/index.html'],
+  outdir: './dist',
+  target: 'browser',
+})
+```
+
+**Features**:
+- Bundles HTML imports
+- Processes CSS
+- Transpiles TypeScript
+- Tree shakes unused code
+- Generates source maps
+
+### No Need For
+
+- ❌ Webpack
+- ❌ Rollup  
+- ❌ Vite
+- ❌ esbuild (Bun has it built-in)
+- ❌ Parcel
+
+## Built-In APIs
+
+Bun provides optimized built-in APIs. Use these instead of npm packages:
+
+### WebSocket
+
+```typescript
+// ✅ Good - Built-in WebSocket
+Bun.serve({
+  port: 3000,
+  websocket: {
+    open: (ws) => { /* ... */ },
+    close: (ws) => { /* ... */ },
+    message: (ws, message) => { /* ... */ }
+  },
+  fetch: (req, server) => {
+    if (server.upgrade(req)) return
+    return new Response('HTTP handler')
+  }
+})
+
+// ❌ Bad - Don't use 'ws' package
+import WebSocket from 'ws'
+```
+
+### File Operations
+
+```typescript
+// ✅ Good - Use Bun.file
+const file = Bun.file('data.json')
+const data = await file.json()
+
+await Bun.write('output.txt', 'Hello world')
+
+// ❌ Bad - Node file APIS are slower
+import { readFileSync } from 'node:fs'
+const data = readFileSync('data.json', 'utf-8')
+```
+
+### SQLite
+
+```typescript
+// ✅ Good - Use bun:sqlite
+import { Database } from 'bun:sqlite'
+
+const db = new Database('data.db')
+const query = db.query('SELECT * FROM users WHERE id = ?')
+const user = query.get(123)
+
+// ❌ Bad - Don't use better-sqlite3
+import Database from 'better-sqlite3'
+```
+
+### Process Execution
+
+```typescript
+// ✅ Good - Use Bun.$
+const output = await Bun.$`ls -la`
+await Bun.$`git status`
+
+// ❌ Bad - Don't use execa
+import { execa } from 'execa'
+await execa('ls', ['-la'])
+```
+
+## Environment Variables
+
+Bun automatically loads `.env` files:
+
+```bash
+# .env file
+PORT=3000
+DEBUG=true
+```
+
+```typescript
+// ✅ Good - Direct access (Bun loads .env automatically)
+const port = process.env.PORT ?? 3000
+const debug = process.env.DEBUG === 'true'
+
+// ❌ Bad - Don't use dotenv package
+import 'dotenv/config'
+```
+
+## Testing
+
+Bun has a built-in test runner:
+
+```typescript
+// ✅ Good - Use bun:test
+import { test, expect, describe } from 'bun:test'
+
+describe('input packing', () => {
+  test('packs state correctly', () => {
+    const state = { UP: true, DOWN: false, LEFT: false, RIGHT: false }
+    const packed = pack(state)
+    expect(packed).toBe(1)
+  })
+  
+  test('unpacks state correctly', () => {
+    const state = unpack(1)
+    expect(state.UP).toBe(true)
+    expect(state.DOWN).toBe(false)
+  })
+})
+
+// ❌ Bad - Don't use jest/vitest
+import { describe, test, expect } from 'vitest'
+```
+
+### Run Tests
+
+```bash
+# ✅ Good - Use bun test
+bun test
+bun test game/utility/input.test.ts
+
+# ❌ Bad - Don't use other test runners
+npm test
+jest
+vitest
+```
+
+### Test Patterns
+
+```typescript
+// test file: input.test.ts
+import { test, expect } from 'bun:test'
+import { pack, unpack } from './input'
+
+test('pack sets UP bit', () => {
+  const packed = pack({ UP: true, DOWN: false, LEFT: false, RIGHT: false })
+  expect(packed & 0b00000001).toBeTruthy()
+})
+
+test('unpack reads UP bit', () => {
+  const state = unpack(0b00000001)
+  expect(state.UP).toBe(true)
+  expect(state.DOWN).toBe(false)
+})
+```
+
+## HTTP Server
+
+Use `Bun.serve()` for HTTP/WebSocket servers:
+
+```typescript
+// ✅ Good - Bun.serve with WebSocket
+Bun.serve({
+  port: 3000,
+  
+  // WebSocket handler
+  websocket: {
+    open(ws) {
+      console.log('Client connected')
+    },
+    message(ws, message) {
+      // Handle binary message
+      const data = new Uint8Array(message)
+      process_packet(ws, data)
+    },
+    close(ws) {
+      console.log('Client disconnected')
+    }
+  },
+  
+  // HTTP handler
+  fetch(req, server) {
+    const url = new URL(req.url)
+    
+    // Upgrade WebSocket connections
+    if (url.pathname === '/socket') {
+      if (server.upgrade(req)) return
+      return new Response('Upgrade failed', { status: 500 })
+    }
+    
+    // Serve static files
+    if (url.pathname === '/') {
+      return new Response(Bun.file('client/canvas/index.html'))
+    }
+    
+    return new Response('Not found', { status: 404 })
+  }
+})
+
+// ❌ Bad - Don't use Express
+import express from 'express'
+const app = express()
+```
+
+## Configuration
+
+### bunfig.toml
+
+Bun configuration file:
+
+```toml
+# Install configuration
+[install]
+registry = "https://registry.npmjs.org/"
+
+# Development configuration
+[dev]
+watch = true
+```
+
+### tsconfig.json
+
+TypeScript configuration (Bun respects this):
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+## Hot Reload
+
+Bun provides built-in hot reload with `--watch`:
+
+```bash
+# ✅ Good - Built-in watch mode
+bun --watch server/index.tsx
+
+# Bun restarts on file changes
+# No need for nodemon, tsx --watch, etc.
+```
+
+## Debugging
+
+### Console Output
+
+Bun provides nice console output:
+
+```typescript
+console.log({ entity: 123, position: { x: 100, y: 200 } })
+// Pretty-printed with colors
+```
+
+### Performance
+
+```typescript
+// Bun optimizes performance.now()
+const start = performance.now()
+process_entities()
+const elapsed = performance.now() - start
+```
+
+### Inspect Mode
+
+```bash
+# Debug with Chrome DevTools
+bun --inspect server/index.tsx
+
+# Then open chrome://inspect
+```
+
+## Module System
+
+Bun fully supports ESM (ECMAScript Modules):
+
+```typescript
+// ✅ Good - Use ESM
+export const system = { }
+export default system
+
+import system from './system'
+
+// ❌ Bad - Don't use CommonJS
+module.exports = { }
+const system = require('./system')
+```
+
+### package.json Type
+
+```json
+{
+  "type": "module"
+}
+```
+
+This ensures all `.js` files are treated as ESM.
+
+## Dependencies
+
+Current project dependencies:
+
+```json
+{
+  "dependencies": {
+    "matter-js": "^0.20.0",
+    "pixi.js": "^8.14.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "^2.2.5",
+    "tailwindcss": "^4.1.11"
+  }
+}
+```
+
+**Philosophy**:
+- Minimal dependencies
+- Leverage Bun built-ins
+- Avoid packages Bun replaces
+
+## Best Practices
+
+1. **Use Bun commands** - `bun install`, `bun add`, `bun run`
+2. **Use Bun APIs** - WebSocket, File I/O, SQLite, Process execution
+3. **No dotenv** - Bun loads .env automatically
+4. **ESM only** - Use import/export, not require
+5. **Bun.serve** - Don't use Express or Fastify
+6. **bun:test** - Don't use Jest or Vitest
+7. **Bun.build** - Don't use Webpack or Vite
+8. **--watch flag** - Don't use nodemon
+9. **Native performance** - Bun is fast, use it
+
+## Common Tasks
+
+```bash
+# Install dependencies
+bun install
+
+# Add a package
+bun add pixi.js
+
+# Remove a package
+bun remove unused-package
+
+# Run dev server with hot reload
+bun run dev
+
+# Run production server
+bun start
+
+# Build client bundle
+bun run build
+
+# Run tests
+bun test
+
+# Execute a script
+bun script.ts
+
+# Update all dependencies
+bun update
+```
+
+## Summary
+
+- **Runtime**: Bun (not Node.js)
+- **Package Manager**: Bun (not npm/pnpm/yarn)
+- **Test Runner**: bun:test (not Jest/Vitest)
+- **Bundler**: Bun.build (not Webpack/Vite)
+- **Server**: Bun.serve (not Express)
+- **WebSocket**: Built-in (not ws package)
+- **SQLite**: bun:sqlite (not better-sqlite3)
+- **Env Loading**: Automatic (not dotenv)
+- **Hot Reload**: --watch (not nodemon)
+
+**Key Principle**: If Bun has a built-in, use it. Don't add npm packages for functionality Bun provides.

@@ -1,0 +1,554 @@
+---
+description: Network architecture, multiplayer patterns, and client-server synchronization
+globs: "game/packet/**/*.ts, client/system/network.ts, client/system/prediction.ts, server/system/network.ts, server/system/controller.ts, server/system/sync.ts"
+alwaysApply: false
+---
+
+# Network & Multiplayer
+
+This document describes the network architecture, binary packet serialization, client-side prediction, and server reconciliation patterns used in Ruthless.
+
+## Architecture Overview
+
+Ruthless uses a client-server architecture with:
+
+1. **Server Authority** - Server is the source of truth
+2. **Client Prediction** - Clients predict local player immediately
+3. **Binary Protocol** - Efficient SoA (Structure of Arrays) serialization
+4. **Server Reconciliation** - Clients reconcile predictions with server state
+5. **Input Throttling** - Rate limiting to prevent spam
+
+```
+┌──────────┐                           ┌──────────┐
+│  Client  │                           │  Server  │
+└──────────┘                           └──────────┘
+     │                                      │
+     │ 1. Send Input (w/ sequence)          │
+     │─────────────────────────────────────>│
+     │                                      │
+     │ 2. Predict Locally                   │ 3. Validate Input
+     │                                      │
+     │                                      │ 4. Execute Action
+     │                                      │
+     │ 5. Broadcast State (w/ sequence)     │
+     │<─────────────────────────────────────│
+     │                                      │
+     │ 6. Reconcile if diverged             │
+     │                                      │
+```
+
+## Binary Packet System
+
+Ruthless uses custom Structure-of-Arrays (SoA) serialization for efficient network transmission.
+
+### Packet Definition
+
+Each packet defines how to serialize/deserialize a specific component:
+
+```typescript
+import { create_soa_serializer, create_soa_deserializer } from '@/game/utility/serialization'
+import { PACKET } from '@/game/utility/packet'
+import type { PacketDefinition } from '@/game/system/packet'
+
+declare module '@/game/system/packet' { 
+  interface Packets { position: number[] } 
+}
+
+export const packet: PacketDefinition<'position'> = {
+  id: 'position',
+  type: PACKET.POSITION,
+  serializer: (game) => create_soa_serializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+  deserializer: (game) => create_soa_deserializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+}
+```
+
+### Packet Types
+
+Define packet type constants:
+
+```typescript
+export const PACKET = {
+  SNAPSHOT: 0,
+  SYNC: 1,
+  UPDATE: 2,
+  POSITION: 3,
+  VELOCITY: 4,
+  ROTATION: 5,
+  HEALTH: 6,
+  MOVEMENT: 7,
+} as const
+```
+
+### SoA Serialization
+
+Structure-of-Arrays serialization packs data efficiently:
+
+**Format**:
+```
+[entity_count: u32]
+[entity_id: u32][field1][field2]...
+[entity_id: u32][field1][field2]...
+...
+```
+
+**Benefits**:
+- Minimal overhead (4 bytes per entity + field sizes)
+- Batch processing friendly
+- Cache-friendly access
+- Type-safe field definitions
+
+**Field Types**:
+- `f32` - 4 bytes (Float32)
+- `f64` - 8 bytes (Float64)
+- `u8` - 1 byte (Uint8)
+- `u16` - 2 bytes (Uint16)
+- `u32` - 4 bytes (Uint32)
+- `i8` - 1 byte (Int8)
+- `i16` - 2 bytes (Int16)
+- `i32` - 4 bytes (Int32)
+
+### Buffer Reuse
+
+Serializers reuse buffers to minimize allocations:
+
+```typescript
+export const create_soa_serializer = (fields: Field[]) => {
+  // Reuse buffer across calls
+  let buffer = new ArrayBuffer(4096)
+  let view = new DataView(buffer)
+  
+  return (entities: number[]): ArrayBuffer => {
+    const required_size = calculate_size(entities, fields)
+    
+    // Grow buffer if needed
+    if (buffer.byteLength < required_size) {
+      buffer = new ArrayBuffer(required_size * 2)
+      view = new DataView(buffer)
+    }
+    
+    // Serialize...
+    
+    // Return slice (don't send entire buffer)
+    return buffer.slice(0, required_size)
+  }
+}
+```
+
+## Client-Side Prediction
+
+The client predicts local player actions immediately for responsive gameplay.
+
+### Prediction System
+
+```typescript
+declare module '@/game' { 
+  interface Game {
+    prediction: {
+      enabled: boolean
+      history: Prediction[]
+      history_size: number
+      last_server_sequence: number
+      divergence_threshold: number
+      snapshot: Snapshot | null
+    }
+  }
+}
+
+type Prediction = {
+  components: Snapshot      // Component state at this frame
+  input: State              // Input that was applied
+  sequence: number          // Input sequence number
+  timestamp: number         // When prediction was made
+}
+```
+
+### Prediction Flow
+
+1. **Capture Input** - Record input with sequence number
+2. **Predict Locally** - Apply action immediately
+3. **Store Snapshot** - Save state for reconciliation
+4. **Send to Server** - Transmit input with sequence
+5. **Receive Authoritative State** - Get server's result
+6. **Reconcile** - Compare and correct if diverged
+
+```typescript
+// 1. Capture and predict
+game.on('client:controller:input', (data) => {
+  if (!game.prediction.enabled) return
+  
+  // Store prediction snapshot
+  game.prediction.history.push({
+    sequence: data.sequence,
+    timestamp: performance.now(),
+    input: { ...game.input.state },
+    components: snapshot(game, game.entity),
+  })
+  
+  // Limit history size
+  if (game.prediction.history.length > game.prediction.history_size) {
+    game.prediction.history.shift()
+  }
+})
+
+// 2. Reconcile with server state
+tick: async (game) => {
+  if (!game.prediction.snapshot) return
+  
+  const current = snapshot(game, game.entity)
+  const delta = divergence(game.prediction.snapshot, current)
+  
+  if (delta > game.prediction.divergence_threshold) {
+    // Significant divergence - rollback and replay
+    rollback(game, game.entity, game.prediction.snapshot, 
+             game.prediction.history, game.prediction.last_server_sequence)
+  } else if (delta > 0.1) {
+    // Small divergence - interpolate smoothly
+    interpolate(game, game.entity, game.prediction.snapshot, 
+                current, game.prediction.interpolation_alpha)
+  }
+  
+  game.prediction.snapshot = null
+}
+```
+
+### Rollback and Replay
+
+When prediction diverges significantly, rollback to server state and replay pending inputs:
+
+```typescript
+const rollback = (
+  game: Game, 
+  entity: number, 
+  server: Snapshot, 
+  history: Prediction[], 
+  lastSeq: number
+): void => {
+  // Restore to server state
+  restore(game, entity, server)
+  
+  // Get inputs that server hasn't processed yet
+  const pending = history.filter(s => s.sequence > lastSeq)
+  
+  // Replay pending inputs
+  for (const snap of pending) {
+    game.action('move', entity, snap.input)
+  }
+}
+```
+
+### Divergence Calculation
+
+Calculate total difference between predicted and server state:
+
+```typescript
+const divergence = (a: Snapshot, b: Snapshot): number => {
+  let total = 0
+  
+  for (const [component, data] of Object.entries(a)) {
+    const other = b[component]
+    if (!other) continue
+    
+    for (const [key, value] of Object.entries(data)) {
+      const otherValue = other[key as keyof typeof other]
+      if (typeof value === 'number' && typeof otherValue === 'number') {
+        total += Math.abs(value - otherValue)
+      }
+    }
+  }
+  
+  return total
+}
+```
+
+## Input Handling
+
+### Input State Packing
+
+Input is packed into a single byte using bitflags:
+
+```typescript
+export type State = {
+  UP: boolean
+  DOWN: boolean
+  LEFT: boolean
+  RIGHT: boolean
+  ACTION_1: boolean
+  ACTION_2: boolean
+  ACTION_3: boolean
+  ACTION_4: boolean
+}
+
+export const pack = (state: State): number => {
+  return (
+    (state.UP ? 1 << 0 : 0) |
+    (state.DOWN ? 1 << 1 : 0) |
+    (state.LEFT ? 1 << 2 : 0) |
+    (state.RIGHT ? 1 << 3 : 0) |
+    (state.ACTION_1 ? 1 << 4 : 0) |
+    (state.ACTION_2 ? 1 << 5 : 0) |
+    (state.ACTION_3 ? 1 << 6 : 0) |
+    (state.ACTION_4 ? 1 << 7 : 0)
+  )
+}
+
+export const unpack = (packed: number): State => {
+  return {
+    UP: (packed & (1 << 0)) !== 0,
+    DOWN: (packed & (1 << 1)) !== 0,
+    LEFT: (packed & (1 << 2)) !== 0,
+    RIGHT: (packed & (1 << 3)) !== 0,
+    ACTION_1: (packed & (1 << 4)) !== 0,
+    ACTION_2: (packed & (1 << 5)) !== 0,
+    ACTION_3: (packed & (1 << 6)) !== 0,
+    ACTION_4: (packed & (1 << 7)) !== 0,
+  }
+}
+```
+
+### Input Sequence Numbers
+
+Each input has a sequence number for ordering and reconciliation:
+
+```typescript
+// Client side
+let input_sequence = 0
+
+function send_input(state: State) {
+  input_sequence++
+  
+  const buffer = packet.input.encode(state, input_sequence)
+  socket.send(buffer)
+}
+
+// Server side
+game.on('server:player:input', (event) => {
+  const { state, sequence } = packet.input.decode(event.input)
+  
+  // Store sequence with entity
+  game.set(entity, 'input', { packed: pack(state), sequence })
+  
+  // Echo back in state updates so client can reconcile
+  game.prediction.last_server_sequence = sequence
+})
+```
+
+### Input Throttling
+
+Rate-limit input to prevent spam and abuse:
+
+```typescript
+declare module '@/game' { 
+  interface Game {
+    controller: {
+      throttle_ms: number
+      history: Map<Connection, number>
+    }
+  }
+}
+
+export const system: System = {
+  install: async (game) => {
+    game.controller = {
+      throttle_ms: game.option('input_rate_limit', 100 / game.option('framerate', 60)),
+      history: new Map(),
+    }
+    
+    game.on('server:player:input', (event) => {
+      const now = Date.now()
+      const last = game.controller.history.get(event.connection) ?? 0
+      const elapsed = now - last
+      
+      // Throttle if too frequent
+      if (elapsed < game.controller.throttle_ms) {
+        game.emit('server:controller:throttled', { 
+          connection: event.connection, 
+          entity 
+        })
+        console.warn(`[server:controller] rate limited: #${entity}`)
+        return
+      }
+      
+      game.controller.history.set(event.connection, now)
+      
+      // Process input...
+    })
+  }
+}
+```
+
+## Server Synchronization
+
+### Connection Management
+
+Track which entity belongs to which connection:
+
+```typescript
+declare module '@/game' { 
+  interface Game {
+    connections: Map<Connection, number>  // connection -> entity
+    entities: Map<number, Connection>     // entity -> connection
+  }
+}
+
+// On player connect
+game.on('server:network:connected', (connection) => {
+  const entity = spawn_player(game)
+  game.connections.set(connection, entity)
+  game.entities.set(entity, connection)
+})
+
+// On player disconnect
+game.on('server:network:disconnected', (connection) => {
+  const entity = game.connections.get(connection)
+  if (entity !== undefined) {
+    game.despawn(entity)
+    game.connections.delete(connection)
+    game.entities.delete(entity)
+  }
+})
+```
+
+### State Broadcasting
+
+Broadcast component updates to all clients:
+
+```typescript
+// Gather entities to sync
+const entities = game.query([game.components.sync])
+
+// Serialize each component
+const position_data = packet.position.encode(game, entities)
+const velocity_data = packet.velocity.encode(game, entities)
+const health_data = packet.health.encode(game, entities)
+
+// Send to all connections
+for (const [connection] of game.connections) {
+  connection.send(create_packet(PACKET.POSITION, position_data))
+  connection.send(create_packet(PACKET.VELOCITY, velocity_data))
+  connection.send(create_packet(PACKET.HEALTH, health_data))
+}
+```
+
+### Dirty Tracking
+
+Only send components that have changed:
+
+```typescript
+// Components have 'updated' bitmap
+const updated_entities = game.query({
+  all: ['position', 'sync'],
+  // Filter by updated flag in implementation
+})
+
+if (updated_entities.length > 0) {
+  const data = packet.position.encode(game, updated_entities)
+  broadcast(data)
+}
+
+// Flush updated flags after sync
+game.flush('position')
+```
+
+### Delta Compression
+
+Only send entities that changed since last sync:
+
+```typescript
+const observer = create_observer()
+
+// Returns only added/removed entities
+const delta = observer.serialize(current_entities)
+
+if (delta.byteLength > 0) {
+  broadcast(create_packet(PACKET.ENTITIES, delta))
+}
+```
+
+## WebSocket Protocol
+
+### Client Connection
+
+```typescript
+export const system: System = {
+  id: 'client:network',
+  install: async (game) => {
+    game.socket = new WebSocket('/socket')
+    game.socket.binaryType = 'arraybuffer'
+    
+    game.socket.addEventListener('open', () => {
+      game.emit('client:player:connected', game.socket)
+    })
+    
+    game.socket.addEventListener('message', (event) => {
+      const buffer = new Uint8Array(event.data)
+      const packet_type = buffer[0]!
+      const data = buffer.slice(1).buffer
+      
+      const packet = game.packet.types.get(packet_type)
+      if (packet) {
+        packet.decode(game, data, entities)
+      }
+    })
+  }
+}
+```
+
+### Server Handling
+
+```typescript
+Bun.serve({
+  port: 3000,
+  websocket: {
+    open: (ws) => {
+      game.emit('server:network:connected', ws)
+    },
+    close: (ws) => {
+      game.emit('server:network:disconnected', ws)
+    },
+    message: (ws, message) => {
+      game.emit('server:player:input', { 
+        connection: ws, 
+        input: message 
+      })
+    }
+  }
+})
+```
+
+## Best Practices
+
+1. **Server Authority** - Never trust client state
+2. **Validate Everything** - Check all inputs server-side
+3. **Predict Locally** - Apply local player actions immediately
+4. **Buffer History** - Keep input history for reconciliation
+5. **Throttle Input** - Rate-limit to prevent abuse
+6. **Reuse Buffers** - Don't allocate on every serialize
+7. **Pack Efficiently** - Use bitflags and typed arrays
+8. **Sync Smart** - Only send what changed
+9. **Reconcile Smoothly** - Interpolate small differences
+10. **Log Divergence** - Monitor prediction accuracy
+
+## Configuration Options
+
+```typescript
+const game = await Game.make(systems, {
+  // Network
+  input_rate_limit: 100 / 60,           // ms between inputs
+  network_sync_threshold: 16,            // ms between syncs
+  
+  // Prediction
+  prediction_enabled: true,              // Enable client prediction
+  prediction_error_threshold: 5.0,       // Divergence for rollback
+  prediction_buffer_size: 60,            // Frames of history
+  
+  // Interpolation
+  interpolation_enabled: true,           // Smooth corrections
+  interpolation_speed: 0.15,             // Interpolation alpha
+})
+```

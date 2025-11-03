@@ -1,0 +1,544 @@
+---
+description: Performance optimization patterns for game loops, memory management, and cache efficiency
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: true
+---
+
+# Performance Optimization
+
+This document outlines performance-critical patterns and best practices for maintaining high frame rates in Ruthless.
+
+## Core Principle: Performance-First
+
+Ruthless is a real-time multiplayer game that must maintain consistent 60 FPS. Every optimization matters:
+
+- **Hot paths must be fast** - Game loop runs 60 times per second
+- **Minimize allocations** - Garbage collection causes frame drops
+- **Cache-friendly data** - Leverage CPU cache with ECS
+- **Mutate in place** - Avoid creating new objects
+- **Batch operations** - Process entities in groups
+
+## Direct Mutation Over Immutability
+
+In hot paths, mutate objects directly instead of creating new ones.
+
+### Component Updates
+
+```typescript
+// ✅ Good - Direct mutation
+const velocity = game.get(entity, 'velocity')
+if (velocity) {
+  velocity.x += acceleration_x
+  velocity.y += acceleration_y
+  game.set(entity, 'velocity', velocity)
+}
+
+// ❌ Bad - Creates new object every frame
+const velocity = game.get(entity, 'velocity')
+if (velocity) {
+  game.set(entity, 'velocity', { 
+    ...velocity,
+    x: velocity.x + acceleration_x,
+    y: velocity.y + acceleration_y
+  })
+}
+```
+
+### Position Updates
+
+```typescript
+// ✅ Good - Direct property updates
+const position = game.get(entity, 'position')
+const velocity = game.get(entity, 'velocity')
+
+if (position && velocity) {
+  position.x += velocity.x
+  position.y += velocity.y
+  game.set(entity, 'position', position)
+}
+
+// ❌ Bad - Spreading creates garbage
+game.set(entity, 'position', {
+  ...position,
+  x: position.x + velocity.x,
+  y: position.y + velocity.y
+})
+```
+
+### Physics Updates
+
+```typescript
+// ✅ Good - Mutate physics body directly
+for (const body of world.bodies) {
+  const entity = body.plugin.entity as number
+  if (!game.has(entity, 'velocity')) continue
+  
+  const velocity = game.get(entity, 'velocity')
+  if (!velocity) continue
+  
+  // Direct mutation using Matter.js API
+  Matter.Body.setVelocity(body, { x: velocity.x, y: velocity.y })
+}
+
+// ❌ Bad - Creating new bodies
+const newBody = Matter.Bodies.rectangle(x, y, w, h)
+```
+
+## Buffer Reuse
+
+Reuse buffers and typed arrays instead of allocating new ones.
+
+### Serialization Buffers
+
+```typescript
+// ✅ Good - Reuse buffer
+export const create_soa_serializer = (fields: Field[]) => {
+  // Buffer lives across calls
+  let buffer = new ArrayBuffer(4096)
+  let view = new DataView(buffer)
+  
+  return (entities: number[]): ArrayBuffer => {
+    const required_size = calculate_size(entities)
+    
+    // Grow only when needed
+    if (buffer.byteLength < required_size) {
+      buffer = new ArrayBuffer(required_size * 2)  // Grow 2x
+      view = new DataView(buffer)
+    }
+    
+    // Write to existing buffer
+    write_data(view, entities, fields)
+    
+    // Return slice, not entire buffer
+    return buffer.slice(0, required_size)
+  }
+}
+
+// ❌ Bad - Allocate every time
+function serialize(entities: number[]): ArrayBuffer {
+  const buffer = new ArrayBuffer(calculate_size(entities))
+  const view = new DataView(buffer)
+  write_data(view, entities)
+  return buffer
+}
+```
+
+### Observer Pattern with Reuse
+
+```typescript
+// ✅ Good - Reuse Set for tracking
+export const create_observer = () => {
+  const seen = new Set<number>()  // Reused across calls
+  let buffer = new ArrayBuffer(1024)
+  let view = new DataView(buffer)
+  
+  return {
+    serialize: (entities: number[]): ArrayBuffer => {
+      const current = new Set(entities)
+      const added: number[] = []
+      const removed: number[] = []
+      
+      // Compute delta...
+      
+      for (const entity of removed) {
+        seen.delete(entity)  // Mutate Set in place
+      }
+      
+      // Reuse buffer...
+    }
+  }
+}
+```
+
+## Cache-Friendly Data Access
+
+Leverage ECS structure-of-arrays for cache-friendly iteration.
+
+### Query and Batch Process
+
+```typescript
+// ✅ Good - Query once, batch process
+const moving_entities = game.query([game.components.position, game.components.velocity])
+
+for (const entity of moving_entities) {
+  const pos = game.get(entity, 'position')
+  const vel = game.get(entity, 'velocity')
+  
+  if (!pos || !vel) continue
+  
+  pos.x += vel.x
+  pos.y += vel.y
+  
+  game.set(entity, 'position', pos)
+}
+
+// ❌ Bad - Scattered queries
+for (const entity of all_entities) {
+  if (game.has(entity, 'position') && game.has(entity, 'velocity')) {
+    // Process...
+  }
+}
+```
+
+### Direct Array Access
+
+When performance is critical, access typed arrays directly:
+
+```typescript
+// ✅ Good - Direct array access in hot loop
+const position_x = game.components.position.x
+const position_y = game.components.position.y
+const velocity_x = game.components.velocity.x
+const velocity_y = game.components.velocity.y
+
+const entities = game.query([game.components.position, game.components.velocity])
+
+for (const entity of entities) {
+  const idx = (entity & 0xFFFFF)  // Extract index
+  
+  position_x[idx] += velocity_x[idx]
+  position_y[idx] += velocity_y[idx]
+}
+
+// ⚠️ Acceptable but slower - Component getter
+for (const entity of entities) {
+  const pos = game.get(entity, 'position')
+  const vel = game.get(entity, 'velocity')
+  // ...
+}
+```
+
+### Contiguous Memory Layout
+
+ECS stores components in typed arrays for cache-friendly access:
+
+```typescript
+// Components are stored as typed arrays
+export const component = {
+  x: new Float32Array([]),      // Contiguous in memory
+  y: new Float32Array([]),      // Contiguous in memory
+}
+
+// CPU cache loves this pattern:
+// Reading position_x[0], [1], [2]... is cache-friendly
+// Each array is contiguous, sequential access is fast
+```
+
+## Minimize Garbage Collection
+
+Reduce allocations to avoid GC pauses that cause frame drops.
+
+### Avoid Temporary Objects
+
+```typescript
+// ✅ Good - No temporary objects
+const dx = target_x - entity_x
+const dy = target_y - entity_y
+const distance = Math.sqrt(dx * dx + dy * dy)
+
+// ❌ Bad - Creates temporary vector objects
+const vec1 = { x: target_x, y: target_y }
+const vec2 = { x: entity_x, y: entity_y }
+const diff = { x: vec1.x - vec2.x, y: vec1.y - vec2.y }
+const distance = Math.sqrt(diff.x * diff.x + diff.y * diff.y)
+```
+
+### Reuse Arrays
+
+```typescript
+// ✅ Good - Clear and reuse
+const results: number[] = []
+
+function find_nearby(x: number, y: number) {
+  results.length = 0  // Clear without allocating
+  
+  // Fill results...
+  
+  return results
+}
+
+// ❌ Bad - Allocate every call
+function find_nearby(x: number, y: number) {
+  const results: number[] = []  // New allocation
+  return results
+}
+```
+
+### String Concatenation
+
+```typescript
+// ✅ Good - Template literals are optimized
+console.debug(`[${system_id}] processing ${count} entities`)
+
+// ⚠️  Acceptable for logging
+console.debug('[' + system_id + '] processing ' + count + ' entities')
+
+// ❌ Bad - In hot loops
+for (const entity of entities) {
+  const message = 'Processing entity ' + entity  // Don't do this every frame
+}
+```
+
+## Early Exit Patterns
+
+Skip unnecessary work as early as possible.
+
+### Guard Clauses
+
+```typescript
+// ✅ Good - Exit early
+export const system: System = {
+  tick: async (game, delta) => {
+    // No work if no entities
+    if (game.connections.size === 0) return
+    
+    const entities = game.query([game.components.input])
+    
+    // No work if no inputs
+    if (entities.length === 0) return
+    
+    for (const entity of entities) {
+      const component = game.get(entity, 'input')
+      if (!component) continue  // Skip invalid
+      
+      // Process...
+    }
+  }
+}
+```
+
+### Conditional System Execution
+
+```typescript
+// ✅ Good - Periodic execution
+tick: async (game, delta, options) => {
+  // Only run every N frames
+  if (game.frame % options.flush_rate !== 0) return
+  
+  // Expensive cleanup logic...
+}
+```
+
+### Short-Circuit Evaluation
+
+```typescript
+// ✅ Good - Short-circuit checks
+if (!entity || !game.exists(entity) || !game.has(entity, 'position')) {
+  return
+}
+
+// Now safe to use entity and position
+```
+
+## Batch Operations
+
+Process multiple entities together instead of one-by-one.
+
+### Query-Based Processing
+
+```typescript
+// ✅ Good - Batch query and process
+const players = game.query([game.components.player, game.components.position])
+
+const position_data = packet.position.encode(game, players)
+const velocity_data = packet.velocity.encode(game, players)
+
+broadcast(position_data)
+broadcast(velocity_data)
+
+// ❌ Bad - Process individually
+for (const entity of players) {
+  const pos_data = serialize_position(entity)
+  broadcast(pos_data)  // Network call per entity
+}
+```
+
+### Bulk Updates
+
+```typescript
+// ✅ Good - Prepare data, then bulk apply
+const updates: Array<{ entity: number, velocity: Vector }> = []
+
+// Collect updates
+for (const entity of entities) {
+  const input = get_input(entity)
+  const velocity = calculate_velocity(input)
+  updates.push({ entity, velocity })
+}
+
+// Apply in batch
+for (const update of updates) {
+  game.set(update.entity, 'velocity', update.velocity)
+}
+
+// Flush all at once
+game.flush('velocity')
+```
+
+## Avoid Repeated Calculations
+
+Cache computed values when possible.
+
+### Store Results
+
+```typescript
+// ✅ Good - Calculate once, use many times
+const moving_entities = game.query([game.components.position, game.components.velocity])
+
+if (moving_entities.length === 0) return
+
+const delta_seconds = delta / 1000
+
+for (const entity of moving_entities) {
+  const pos = game.get(entity, 'position')
+  const vel = game.get(entity, 'velocity')
+  
+  if (!pos || !vel) continue
+  
+  pos.x += vel.x * delta_seconds  // Use cached delta_seconds
+  pos.y += vel.y * delta_seconds
+  
+  game.set(entity, 'position', pos)
+}
+
+// ❌ Bad - Calculate in loop
+for (const entity of moving_entities) {
+  pos.x += vel.x * (delta / 1000)  // Division every iteration
+}
+```
+
+### Component Caching
+
+```typescript
+// ✅ Good - Cache component references
+const position_x = game.components.position.x
+const position_y = game.components.position.y
+
+for (const entity of entities) {
+  const idx = entity & 0xFFFFF
+  const x = position_x[idx]
+  const y = position_y[idx]
+  // Use x, y...
+}
+
+// ⚠️  Slower - Lookup every time
+for (const entity of entities) {
+  const x = game.components.position.x[entity & 0xFFFFF]
+  const y = game.components.position.y[entity & 0xFFFFF]
+}
+```
+
+## Typed Arrays
+
+Use typed arrays for numeric data.
+
+### Component Storage
+
+```typescript
+// ✅ Good - Typed arrays for components
+export const component = {
+  x: new Float32Array([]),
+  y: new Float32Array([]),
+}
+
+// Benefits:
+// - Fixed size per element (predictable memory)
+// - Faster than regular arrays
+// - Cache-friendly
+// - Less GC pressure
+```
+
+### Binary Operations
+
+```typescript
+// ✅ Good - Typed array views for binary data
+const buffer = new ArrayBuffer(1024)
+const view = new DataView(buffer)
+
+view.setFloat32(0, x, true)   // Little-endian
+view.setFloat32(4, y, true)
+
+const x_read = view.getFloat32(0, true)
+const y_read = view.getFloat32(4, true)
+```
+
+## Profiling and Monitoring
+
+### Performance Logging
+
+```typescript
+// ✅ Good - Log performance metrics
+const start = performance.now()
+
+process_entities(entities)
+
+const elapsed = performance.now() - start
+
+if (elapsed > 16) {  // Frame budget at 60 FPS
+  console.warn(`[system:physics] slow tick: ${elapsed.toFixed(2)}ms`)
+}
+```
+
+### Frame Time Tracking
+
+```typescript
+// ✅ Good - Track frame consistency
+let last_frame_time = performance.now()
+let frame_times: number[] = []
+
+tick: async (game, delta) => {
+  const now = performance.now()
+  const frame_time = now - last_frame_time
+  last_frame_time = now
+  
+  frame_times.push(frame_time)
+  
+  if (frame_times.length > 60) {
+    const avg = frame_times.reduce((a, b) => a + b) / frame_times.length
+    if (avg > 16.67) {
+      console.warn(`Average frame time: ${avg.toFixed(2)}ms`)
+    }
+    frame_times.length = 0
+  }
+}
+```
+
+## Performance Checklist
+
+- [ ] Mutate objects in place rather than creating new ones
+- [ ] Reuse buffers and avoid allocating in hot loops
+- [ ] Use `game.query()` to batch process entities
+- [ ] Access typed arrays directly in critical loops
+- [ ] Exit early when there's no work to do
+- [ ] Cache computed values outside loops
+- [ ] Use typed arrays for numeric data
+- [ ] Profile slow systems and optimize hot paths
+- [ ] Minimize object spreading and destructuring in loops
+- [ ] Process multiple entities together
+- [ ] Avoid string concatenation in hot paths
+- [ ] Keep component data contiguous (Structure of Arrays)
+
+## Performance Targets
+
+At 60 FPS, each frame has **16.67ms** budget:
+
+- **System tick**: < 1ms per system
+- **Physics update**: < 3ms
+- **Rendering**: < 8ms
+- **Network sync**: < 1ms
+- **Overhead**: < 3ms
+
+**Red flags**:
+- Frame time > 16.67ms (dropped frames)
+- GC pauses > 5ms
+- Single system > 5ms
+
+## Summary
+
+1. **Mutate in place** - Don't create unnecessary objects
+2. **Reuse buffers** - Allocate once, reuse many times
+3. **Query efficiently** - Batch process with ECS queries
+4. **Cache-friendly** - Sequential array access beats scattered lookups
+5. **Exit early** - Skip work when possible
+6. **Batch operations** - Process groups, not individuals
+7. **Monitor performance** - Profile and optimize hot paths

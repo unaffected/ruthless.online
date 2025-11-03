@@ -1,0 +1,393 @@
+---
+description: Core ECS architecture, system design, and separation of concerns
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: true
+---
+
+# Architecture
+
+This document describes the core architectural patterns used in Ruthless, including the Entity-Component-System (ECS) design, system structure, and separation of concerns.
+
+## Three-Tier Architecture
+
+The codebase is organized into three primary domains with clear separation of concerns:
+
+### `game/` - Shared Game Logic
+
+Contains pure game mechanics that run on both client and server:
+
+- **ECS components** - Data definitions (position, velocity, health, etc.)
+- **Systems** - Game logic (physics, collision, actions)
+- **Actions** - Player-initiated behaviors (move, attack, etc.)
+- **Packets** - Network serialization definitions
+- **Utilities** - Helper functions for binary operations, input packing, etc.
+
+**Key principle**: Code in `game/` must be framework-agnostic and reusable on both client and server.
+
+```typescript
+// Example: game/system/physics.ts
+import { type System } from '@/game'
+
+export const system: System = {
+  id: 'game:physics',
+  dependencies: [],
+  install: async (game) => { /* ... */ },
+  tick: async (game, delta) => { /* ... */ }
+}
+```
+
+### `client/` - Client-Specific Code
+
+Handles rendering, input, prediction, and visual presentation:
+
+- **Rendering** - PixiJS graphics and animations
+- **Input** - Keyboard/mouse handling
+- **Prediction** - Client-side prediction with rollback
+- **Interpolation** - Smooth visual updates
+- **UI** - React components for menus and HUD
+
+**Key principle**: Client code predicts and displays, but server is authoritative.
+
+```typescript
+// Example: client/system/prediction.ts
+export const system: System = {
+  id: 'client:prediction',
+  dependencies: [controller, network, player],
+  install: async (game) => { /* ... */ },
+  tick: async (game) => { /* predict and reconcile */ }
+}
+```
+
+### `server/` - Server-Authoritative Code
+
+Acts as the source of truth for game state:
+
+- **Validation** - Verify all player actions
+- **State Management** - Maintain authoritative game state
+- **Synchronization** - Broadcast state to clients
+- **Connection Management** - Handle player join/leave
+
+**Key principle**: Server validates everything and broadcasts authoritative state.
+
+```typescript
+// Example: server/system/controller.ts
+export const system: System = {
+  id: 'server:controller',
+  dependencies: [network],
+  install: async (game) => { /* ... */ },
+  tick: async (game) => { /* validate and execute actions */ }
+}
+```
+
+## Entity-Component-System (ECS)
+
+Ruthless uses a custom ECS architecture optimized for performance and type safety.
+
+### Entities
+
+Entities are numeric IDs representing game objects (players, monsters, items, etc.):
+
+```typescript
+// Spawn a new entity
+const entity = game.spawn()
+
+// Entities use packed format: [20-bit index | 12-bit version]
+// This enables entity recycling while detecting stale references
+```
+
+### Components
+
+Components are pure data structures stored in typed arrays for cache-friendly access:
+
+```typescript
+// Example: game/component/position.ts
+declare module '@/game' { 
+  interface Components { 
+    position: typeof component 
+  }
+}
+
+export const component = {
+  x: new Float32Array([]),
+  y: new Float32Array([])
+}
+
+// Usage:
+game.add(entity, 'position', { x: 100, y: 200 })
+const pos = game.get(entity, 'position')
+game.set(entity, 'position', { x: pos.x + 10, y: pos.y })
+```
+
+**Key characteristics**:
+- Stored in typed arrays (Float32Array, Uint32Array, etc.)
+- Cache-friendly memory layout (Structure of Arrays)
+- Type-safe through module augmentation
+- No methods, only data
+
+### Systems
+
+Systems contain logic that operates on entities with specific components:
+
+```typescript
+export interface System<O = any> {
+  id: string                    // Unique identifier (e.g., 'game:physics')
+  dependencies?: Array<System>  // Systems this depends on
+  options?: O                   // Configuration options
+  install?: (game: Game, options: O) => Promise<void>
+  tick?: (game: Game, delta: number, options: O) => Promise<void>
+}
+```
+
+**System lifecycle**:
+
+1. **Installation** - Initialize state, register event handlers
+2. **Tick** - Execute logic every frame
+3. **Dependencies** - Explicit ordering guarantees
+
+```typescript
+// Example: game/system/action.ts
+export const system: System = {
+  id: 'game:action',
+  dependencies: [event],
+  install: async (game) => {
+    game.actions = new Map()
+    game.action = (id, entity, params) => {
+      const action = game.actions.get(id)
+      if (!action) return false
+      action.execute(game, entity, params)
+      return true
+    }
+  }
+}
+```
+
+### Querying Entities
+
+Use `game.query()` to find entities with specific components:
+
+```typescript
+// Get all entities with position and velocity
+const moving = game.query([game.components.position, game.components.velocity])
+
+for (const entity of moving) {
+  const pos = game.get(entity, 'position')
+  const vel = game.get(entity, 'velocity')
+  
+  game.set(entity, 'position', { 
+    x: pos.x + vel.x, 
+    y: pos.y + vel.y 
+  })
+}
+
+// Advanced filtering
+const filtered = game.query({
+  all: ['position', 'velocity'],    // Must have all
+  any: ['player', 'monster'],       // Must have at least one
+  none: ['despawned', 'frozen']     // Must not have any
+})
+```
+
+## Dependency Injection
+
+Systems explicitly declare dependencies to ensure proper initialization order:
+
+```typescript
+import event from '@/game/system/event'
+import network from '@/client/system/network'
+
+export const system: System = {
+  id: 'client:controller',
+  dependencies: [network, event],  // These install first
+  install: async (game) => {
+    // network and event are guaranteed to be ready
+    game.on('client:player:connected', () => { /* ... */ })
+  }
+}
+```
+
+**Benefits**:
+- Clear dependency graph (no hidden coupling)
+- Predictable initialization order
+- Easy testing (inject mocks)
+- Prevents circular dependencies
+
+## Event-Driven Communication
+
+Systems communicate through a type-safe event system:
+
+### Publishing Events
+
+```typescript
+game.emit('client:controller:input', { 
+  sequence: 123, 
+  state: input_state 
+})
+```
+
+### Subscribing to Events
+
+```typescript
+game.on('client:controller:input', (data) => {
+  console.log(`Input ${data.sequence}:`, data.state)
+})
+```
+
+### Event Naming Convention
+
+Use colon-separated namespaces: `domain:system:event`
+
+- `client:*` - Client-side events
+- `server:*` - Server-side events  
+- `game:*` - Shared game events
+
+### Type-Safe Events
+
+Declare event types using module augmentation:
+
+```typescript
+declare module '@/game/system/event' {
+  interface Events {
+    'client:controller:input': { 
+      sequence: number
+      state: State
+    }
+    'server:player:connected': Connection
+  }
+}
+```
+
+## Module Augmentation Pattern
+
+Extend core types declaratively when systems add functionality:
+
+```typescript
+// At the top of the system file
+declare module '@/game' {
+  interface Game {
+    physics: { engine: Matter.Engine }
+  }
+}
+
+// Then implement in the same file
+export const system: System = {
+  id: 'game:physics',
+  install: async (game) => {
+    game.physics = { engine: Matter.Engine.create() }
+  }
+}
+```
+
+**Benefits**:
+- Type-safe access to system state
+- No wrapper classes needed
+- Centralized type definitions
+- IDE autocomplete for `game.*`
+
+## System Patterns
+
+### Options Pattern
+
+Systems can accept configuration options:
+
+```typescript
+export interface PhysicsOptions {
+  flush_rate: number
+  engine: Matter.IEngineDefinition
+}
+
+export const system: System<PhysicsOptions> = {
+  id: 'game:physics',
+  options: {
+    flush_rate: 300,
+    engine: { gravity: { x: 0, y: 0 } }
+  },
+  install: async (game, options) => {
+    game.physics = { 
+      engine: Matter.Engine.create(options.engine) 
+    }
+  },
+  tick: async (game, delta, options) => {
+    if (game.frame % options.flush_rate !== 0) return
+    // Periodic cleanup...
+  }
+}
+```
+
+### Action Pattern
+
+Actions represent player-initiated behaviors:
+
+```typescript
+// Define action interface
+declare module '@/game/system/action' { 
+  interface Actions { 
+    move: MoveAction 
+  } 
+}
+
+export type MoveAction = State
+
+// Implement action
+export const action: Action<'move'> = {
+  id: 'move',
+  execute: (game, entity, params) => {
+    const velocity = game.get(entity, 'velocity')
+    const movement = game.get(entity, 'movement')
+    if (!velocity || !movement) return
+    
+    // Calculate movement based on input
+    let vx = 0, vy = 0
+    if (params.LEFT) vx -= 1
+    if (params.RIGHT) vx += 1
+    if (params.UP) vy -= 1
+    if (params.DOWN) vy += 1
+    
+    // Normalize and apply speed
+    if (vx !== 0 && vy !== 0) {
+      const magnitude = Math.sqrt(vx * vx + vy * vy)
+      vx /= magnitude
+      vy /= magnitude
+    }
+    
+    game.set(entity, 'velocity', { 
+      x: vx * movement.speed, 
+      y: vy * movement.speed 
+    })
+  }
+}
+```
+
+### Packet Pattern
+
+Packets define network serialization for components:
+
+```typescript
+import { create_soa_serializer, create_soa_deserializer } from '@/game/utility/serialization'
+
+declare module '@/game/system/packet' { 
+  interface Packets { position: number[] } 
+}
+
+export const packet: PacketDefinition<'position'> = {
+  id: 'position',
+  type: PACKET.POSITION,
+  serializer: (game) => create_soa_serializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+  deserializer: (game) => create_soa_deserializer([
+    { name: 'x', type: 'f32', array: game.components.position.x },
+    { name: 'y', type: 'f32', array: game.components.position.y },
+  ]),
+}
+```
+
+## Best Practices
+
+1. **Keep `game/` pure** - No DOM, no PixiJS, no server-specific code
+2. **Systems own their state** - Use module augmentation to extend `Game`
+3. **Explicit dependencies** - Always declare what you depend on
+4. **Events for communication** - Don't directly call other systems
+5. **Query efficiently** - Use `game.query()` for batch processing
+6. **One system per file** - Keep systems focused and cohesive
+7. **Type everything** - Use module augmentation for type safety
