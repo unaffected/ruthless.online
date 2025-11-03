@@ -32,26 +32,22 @@ export const system: System<PhysicsOptions> = {
       if (!game.has(entity, 'velocity')) continue
       
       const velocity = game.get(entity, 'velocity')
+
       if (!velocity) continue 
 
-      // Only sync velocity - physics engine will update position
       Matter.Body.setVelocity(body, { x: velocity.x, y: velocity.y })
     }
     
     Matter.Engine.update(game.physics.engine, delta)
     
-    // Sync resolved positions back from physics bodies to entities (CRITICAL!)
     for (const body of world.bodies) {
       const entity = body.plugin.entity as number
       
       if (body.isStatic) continue
+
       if (!game.has(entity, 'position')) continue
       
-      // Apply collision resolution by updating entity position from physics body
-      game.set(entity, 'position', {
-        x: body.position.x,
-        y: body.position.y
-      })
+      game.set(entity, 'position', { x: body.position.x, y: body.position.y })
     }
  
     if (game.frame % options.flush_rate !== 0) return
