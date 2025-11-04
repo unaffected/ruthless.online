@@ -46,7 +46,7 @@ export const system: System = {
       last_sent: 0,
       last_changed: 0,
       throttle_rate,
-      keepalive_rate: game.option('input_keepalive_rate', 1000),
+      keepalive_rate: game.option('input_keepalive_rate', 1000 * 10),
       pressed: new Set<string>(),
     }
 
@@ -221,7 +221,7 @@ export const system: System = {
 
     const should_send = false
       || action_pressed
-      || (input_changed && elapsed_since_sent >= throttle_interval) 
+      || (input_changed && elapsed_since_sent >= throttle_interval)
       || (elapsed_since_sent >= game.input.keepalive_rate)
 
     if (should_send && game.socket && game.socket.readyState === WebSocket.OPEN) {
