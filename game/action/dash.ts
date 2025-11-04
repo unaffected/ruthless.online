@@ -1,6 +1,5 @@
 import type { Action } from '@/game/config/action'
 import { ACTION_TYPE, ACTION_CONDITION } from '@/game/config/action'
-import { STAT_OPERATION, STAT } from '@/game/system/stat'
 import type { State } from '@/game/utility/input'
 
 declare module '@/game/config/action' {
@@ -16,23 +15,42 @@ export const action: Action<'dash'> = {
   type: ACTION_TYPE.ACTIVATED,
   conditions: ACTION_CONDITION.MOVING,
   startup_duration: 0,
-  active_duration: 200,
+  active_duration: 600,
   recovery_duration: 150,
   cooldown_duration: 1000,
   energy_cost: 15,
   
   on_activate: (ctx) => {
-    ctx.game.effect.apply('modifier', ctx.entity, {
-      stat: STAT.SPEED,
-      operation: STAT_OPERATION.MULTIPLY,
-      value: 4,
-      priority: 0
-    }, ctx.action.id)
+    ctx.game.add(ctx.entity, 'burst', { active: 1 })
+    
+    const velocity = ctx.game.get(ctx.entity, 'velocity')
+    if (!velocity) return
+    
+    const mag = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+    if (mag === 0) return
+    
+    const dir_x = velocity.x / mag
+    const dir_y = velocity.y / mag
+    
+    const dash_speed = (150 / (ctx.action.active_duration ?? 200)) * 1000
+    
+    velocity.x = dir_x * dash_speed
+    velocity.y = dir_y * dash_speed
+    
+    ctx.game.set(ctx.entity, 'velocity', velocity)
   },
   
   on_recovery: (ctx) => {
-    ctx.game.effect.remove_owned(ctx.entity, ctx.action.id)
-  }
+    ctx.game.remove(ctx.entity, 'burst')
+    
+    const velocity = ctx.game.get(ctx.entity, 'velocity')
+    if (!velocity) return
+    
+    velocity.x = 0
+    velocity.y = 0
+    
+    ctx.game.set(ctx.entity, 'velocity', velocity)
+  },
 }
 
 export default action

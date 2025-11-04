@@ -17,7 +17,7 @@ export const action: Action<'shoot'> = {
   active_duration: 100,
   recovery_duration: 100,
   cooldown_duration: 300,
-  energy_cost: 6,
+  energy_cost: 4,
   
   on_active: (ctx) => {
     const position = ctx.game.get(ctx.entity, 'position')

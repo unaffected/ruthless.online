@@ -34,6 +34,7 @@ export type Entities = {
 
 export type System<O = any> = {
   id: string
+  framerate?: number
   install?: (this: Game, game: Game, options: O) => Promise<void>
   tick?: (this: Game, game: Game, delta: number, options: O) => Promise<void>
   dependencies?: Array<System>
@@ -85,6 +86,7 @@ export class Game {
   public registry: Map<Component<COMPONENT>, COMPONENT> = new Map()
   public scaling: Set<COMPONENT> = new Set()
   public state: Record<string, Store<any>> = {}
+  public timings: Map<string, { accumulator: number, last_tick: number, tick_count: number }> = new Map()
 
   public installed: string[] = []
   public systems: System[] = []
@@ -510,7 +512,28 @@ export class Game {
     this.frame++
 
     for (let i = 0; i < this.systems.length; i++) {
-      this.systems[i]!.tick?.call(this, this, delta, this.systems[i]!.options)
+      const system = this.systems[i]!
+
+      if (!system.tick) continue
+      
+      const target_framerate = system.framerate ?? this.options.framerate ?? 60
+      const target_delta = 1000 / target_framerate
+      
+      let timing = this.timings.get(system.id)
+      
+      if (!timing) {
+        timing = { accumulator: 0, last_tick: 0, tick_count: 0 }
+        this.timings.set(system.id, timing)
+      }
+      
+      timing.accumulator += delta
+      
+      while (timing.accumulator >= target_delta) {
+        system.tick.call(this, this, target_delta, system.options)
+        timing.accumulator -= target_delta
+        timing.tick_count++
+        timing.last_tick = this.clock
+      }
     }
   }
 

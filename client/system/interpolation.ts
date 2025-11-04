@@ -42,7 +42,7 @@ export const system: System = {
     const pos_x = positions.x
     const pos_y = positions.y
 
-    for (const entity of entities) {
+    for (const entity of entities) {      
       const idx = entity & 0xFFFFF
       const x = pos_x[idx]!
       const y = pos_y[idx]!
@@ -71,11 +71,19 @@ export const system: System = {
       const dx = state.target_x - state.current_x
       const dy = state.target_y - state.current_y
       const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      const speed = game.stats.get(entity, 'speed')
+      const burst = game.has(entity, 'burst')
+      const threshold = burst 
+        ? game.interpolation.rollback_threshold * 5
+        : game.interpolation.rollback_threshold + (speed * 0.5)
 
-      if (distance > game.interpolation.rollback_threshold) {
+      if (distance > threshold) {
         state.current_x = state.target_x
         state.current_y = state.target_y
-        console.warn(`[client:interpolation] rollback: #${entity} - ${distance.toFixed(2)}px`)
+
+        console.warn(`[client:interpolation] rollback: #${entity} - ${distance.toFixed(2)}px (threshold: ${threshold.toFixed(2)}, burst: ${burst})`)
+        
         continue
       }
 

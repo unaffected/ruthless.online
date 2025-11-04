@@ -67,7 +67,7 @@ export type Action<K extends ACTION = ACTION> = {
   max_charge_duration?: number
   
   energy_cost?: number | ((ctx: ActionContext) => number)
-  energy_cost_per_tick?: number
+  energy_cost_per_second?: number
   
   on_equip?: (ctx: ActionContext) => void
   on_unequip?: (ctx: ActionContext) => void

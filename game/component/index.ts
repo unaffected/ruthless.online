@@ -1,4 +1,5 @@
 export { component as action } from './action'
+export { component as burst } from './burst'
 export { component as collider } from './collider'
 export { component as despawned } from './despawned'
 export { component as effect } from './effect'

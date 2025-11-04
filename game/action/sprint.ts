@@ -15,7 +15,8 @@ export const action: Action<'sprint'> = {
   id: 'sprint',
   type: ACTION_TYPE.CHANNELED,
   conditions: ACTION_CONDITION.MOVING,
-  energy_cost_per_tick: 5 / 60,
+  energy_cost: 5,
+  energy_cost_per_second: 20,
   
   on_activate: (ctx) => {
     ctx.game.effect.apply('modifier', ctx.entity, {
