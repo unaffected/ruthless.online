@@ -15,7 +15,7 @@ export const action: Action<'dash'> = {
   type: ACTION_TYPE.ACTIVATED,
   conditions: ACTION_CONDITION.MOVING,
   startup_duration: 0,
-  active_duration: 600,
+  active_duration: 800,
   recovery_duration: 150,
   cooldown_duration: 1000,
   energy_cost: 15,
@@ -24,15 +24,17 @@ export const action: Action<'dash'> = {
     ctx.game.add(ctx.entity, 'burst', { active: 1 })
     
     const velocity = ctx.game.get(ctx.entity, 'velocity')
+
     if (!velocity) return
     
     const mag = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+
     if (mag === 0) return
     
     const dir_x = velocity.x / mag
     const dir_y = velocity.y / mag
     
-    const dash_speed = (150 / (ctx.action.active_duration ?? 200)) * 1000
+    const dash_speed = (110 / ctx.action.active_duration!) * 1000
     
     velocity.x = dir_x * dash_speed
     velocity.y = dir_y * dash_speed

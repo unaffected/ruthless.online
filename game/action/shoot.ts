@@ -71,6 +71,7 @@ export const action: Action<'shoot'> = {
       options: {
         isSensor: true,
         isStatic: false,
+        inertia: Infinity,
       }
     })
   }

@@ -38,6 +38,7 @@ export type Socket = {}
 
 export const system: System = {
   id: 'server:network' as const,
+  framerate: 25,
   dependencies: [packet_system, grid, event],
   install: async (game) => {
     game.connections = new Map<Connection, number>()
@@ -122,8 +123,6 @@ export const system: System = {
 
   },
   tick: async (game) => {
-    if (game.frame % 3 !== 0 || game.connections.size === 0) return
-
     for (const [connection, entity] of game.connections) {
       const observer = game.observers.get(connection)
       
