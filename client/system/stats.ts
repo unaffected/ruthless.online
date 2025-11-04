@@ -16,17 +16,11 @@ export const system: System = {
   tick: async (game) => {
     if (!game.active_player()) return
     
-    const health = game.get(game.entity, 'health')
-    const energy = game.get(game.entity, 'energy')
+    const stats = game.get(game.entity, 'stats')
+
+    if (!stats) return
     
-    if (!health && !energy) return
-    
-    game.emit('client:player:stats', {
-      health_current: health?.current ?? 0,
-      health_maximum: health?.maximum ?? 0,
-      energy_current: energy?.current ?? 0,
-      energy_maximum: energy?.maximum ?? 0
-    })
+    game.emit('client:player:stats', stats)
   }
 }
 

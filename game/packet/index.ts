@@ -4,10 +4,8 @@ import entities from './entities'
 import position from './position'
 import velocity from './velocity'
 import rotation from './rotation'
-import health from './health'
-import energy from './energy'
-import movement from './movement'
 import projectile from './projectile'
+import stats from './stats'
 
 export const packets: PacketDefinition[] = [
   connected,
@@ -15,10 +13,8 @@ export const packets: PacketDefinition[] = [
   position,
   velocity,
   rotation,
-  health,
-  energy,
-  movement,
   projectile,
+  stats,
 ]
 
 export default packets

@@ -13,6 +13,7 @@ export const PACKET = {
   MOVEMENT: 14 as const,
   ENERGY: 15 as const,
   PROJECTILE: 16 as const,
+  STATS: 17 as const,
 } as const
 
 export const input = {

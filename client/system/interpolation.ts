@@ -38,51 +38,48 @@ export const system: System = {
     if (!game.interpolation.enabled) return
 
     const entities = game.query([game.components.position])
+    const positions = game.components.position
+    const pos_x = positions.x
+    const pos_y = positions.y
 
     for (const entity of entities) {
-      const position = game.get(entity, 'position')
-
-      if (!position) continue
+      const idx = entity & 0xFFFFF
+      const x = pos_x[idx]!
+      const y = pos_y[idx]!
 
       let state = game.interpolation.states.get(entity)
 
       if (!state) {
         game.interpolation.states.set(entity, {
-          previous_x: position.x,
-          previous_y: position.y,
-          target_x: position.x,
-          target_y: position.y,
-          current_x: position.x,
-          current_y: position.y,
+          previous_x: x,
+          previous_y: y,
+          target_x: x,
+          target_y: y,
+          current_x: x,
+          current_y: y,
         })
-
         continue
       }
 
-      if (state.target_x !== position.x || state.target_y !== position.y) {
+      if (state.target_x !== x || state.target_y !== y) {
         state.previous_x = state.current_x
         state.previous_y = state.current_y
-        state.target_x = position.x
-        state.target_y = position.y
+        state.target_x = x
+        state.target_y = y
       }
 
       const dx = state.target_x - state.current_x
       const dy = state.target_y - state.current_y
-
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       if (distance > game.interpolation.rollback_threshold) {
         state.current_x = state.target_x
         state.current_y = state.target_y
-
         console.warn(`[client:interpolation] rollback: #${entity} - ${distance.toFixed(2)}px`)
-        
         continue
       }
 
-      if (distance < game.interpolation.snap_threshold) {
-        continue
-      }
+      if (distance < game.interpolation.snap_threshold) continue
 
       state.current_x += dx * game.interpolation.speed
       state.current_y += dy * game.interpolation.speed

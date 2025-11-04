@@ -44,19 +44,19 @@ export const system: System<ApplicationOptions> = {
     const entities = game.query([game.components.position])
 
     for (const entity of entities) {
-      if (!game.graphics.has(entity)) {
-        if (game.has(entity, 'projectile')) {
-          game.graphic.spawn('projectile', entity)
-        } else {
-          game.graphic.spawn('player', entity)
-        }
+      if (game.graphics.has(entity)) continue
+
+      if (game.has(entity, 'projectile')) {
+        game.graphic.spawn('projectile', entity)
+      } else {
+        game.graphic.spawn('player', entity)
       }
     }
 
     for (const [entity] of game.graphics) {
-      if (!entities.includes(entity)) {
-        game.graphic.despawn(entity)
-      }
+      if (entities.includes(entity)) continue
+      
+      game.graphic.despawn(entity)
     }
 
     game.graphic.tick()

@@ -16,9 +16,9 @@ export const handler: HitHandler<'projectile'> = {
     
     if (projectile.owner === target) return false
     
-    const health = game.get(target, 'health')
+    const stats = game.get(target, 'stats')
     
-    return health !== undefined
+    return stats !== undefined
   },
   execute: (game: Game, source: number, target: number) => {
     const projectile = game.get(source, 'projectile')
@@ -27,7 +27,7 @@ export const handler: HitHandler<'projectile'> = {
     
     game.despawn(source)
     
-    game.combat.apply_damage(projectile.owner, target, projectile.damage, 'projectile')
+    game.combat.apply_damage(projectile.owner, target, projectile.damage)
   }
 }
 

@@ -107,7 +107,9 @@ export const create_soa_deserializer = (fields: Field[]) => {
   }
 }
 
-export const create_observer = () => {
+export type ComponentGetter = (entity: number) => number[]
+
+export const create_observer = (get_components?: ComponentGetter) => {
   const seen = new Set<number>()
 
   let buffer = new ArrayBuffer(1024)
@@ -137,7 +139,7 @@ export const create_observer = () => {
       
       if (added.length === 0 && removed.length === 0) return new ArrayBuffer(0)
       
-      const required_size = 8 + (added.length + removed.length) * 4
+      const required_size = 8 + added.length * (get_components ? 6 : 4) + removed.length * 4
 
       if (buffer.byteLength < required_size) {
         buffer = new ArrayBuffer(required_size * 2)
@@ -153,6 +155,30 @@ export const create_observer = () => {
       for (const entity of added) {
         view.setUint32(offset, entity, true)
         offset += 4
+        
+        if (get_components) {
+          const components = get_components(entity)
+
+          view.setUint16(offset, components.length, true)
+
+          offset += 2
+          
+          for (const component_id of components) {
+            if (offset >= buffer.byteLength) {
+              const new_buffer = new ArrayBuffer(buffer.byteLength * 2)
+              const new_view = new DataView(new_buffer)
+
+              new Uint8Array(new_buffer).set(new Uint8Array(buffer))
+
+              buffer = new_buffer
+              view = new_view
+            }
+            
+            view.setUint8(offset, component_id)
+            1
+            offset += 1
+          }
+        }
       }
       
       view.setUint32(offset, removed.length, true)
@@ -164,10 +190,10 @@ export const create_observer = () => {
         offset += 4
       }
       
-      return buffer.slice(0, required_size)
+      return buffer.slice(0, offset)
     },
     
-    deserialize: (data: ArrayBuffer, entity_map: Map<number, number>, on_add: (entity: number) => void, on_remove: (entity: number) => void): void => {
+    deserialize: (data: ArrayBuffer, entity_map: Map<number, number>, on_add: (entity: number, components?: number[]) => void, on_remove: (entity: number) => void): void => {
       const view = new DataView(data)
 
       let offset = 0
@@ -180,8 +206,23 @@ export const create_observer = () => {
         const server_entity = view.getUint32(offset, true)
 
         offset += 4
+        
+        let components: number[] | undefined
+        
+        if (get_components !== undefined) {
+          const component_count = view.getUint16(offset, true)
 
-        on_add(server_entity)
+          offset += 2
+          
+          components = []
+          
+          for (let j = 0; j < component_count; j++) {
+            components.push(view.getUint8(offset))
+            offset += 1
+          }
+        }
+
+        on_add(server_entity, components)
       }
       
       const removed_count = view.getUint32(offset, true)

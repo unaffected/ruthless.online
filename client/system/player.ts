@@ -18,11 +18,13 @@ export const system: System = {
 
     game.on('client:player:connected', () => {
       console.debug('[client:player] connected to server')
+      
+      if (game.active_player()) { game.action.activate('regeneration', game.entity) }
     })
   },
   tick: async (game) => {
     const players = game.query({
-      all: ['movement', 'position'],
+      all: ['stats', 'position'],
       none: ['projectile']
     })
     

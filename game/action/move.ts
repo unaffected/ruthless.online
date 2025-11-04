@@ -1,17 +1,31 @@
-import type { Action } from '@/game/system/action'
+import type { Action } from '@/game/config/action'
+import { ACTION_TYPE } from '@/game/config/action'
 import type { State } from '@/game/utility/input'
 
-declare module '@/game/system/action' { interface Actions { move: MoveAction } }
+declare module '@/game/config/action' {
+  interface Actions {
+    move: MoveAction
+  }
+}
 
 export type MoveAction = State
 
 export const action: Action<'move'> = {
   id: 'move',
-  execute: (game, entity, params) => {
-    const velocity = game.get(entity, 'velocity')
-    const movement = game.get(entity, 'movement')
+  type: ACTION_TYPE.CHANNELED,
+  
+  on_channel_tick: (ctx) => {
+    const velocity = ctx.game.get(ctx.entity, 'velocity')
 
-    if (!velocity || !movement) return
+    if (!velocity) return
+
+    const params = ctx.params as State
+
+    if (!params) {
+      ctx.game.set(ctx.entity, 'velocity', { x: 0, y: 0 })
+
+      return
+    }
     
     let vx = 0
     let vy = 0
@@ -28,10 +42,16 @@ export const action: Action<'move'> = {
       vy /= magnitude
     }
     
-    vx *= movement.speed
-    vy *= movement.speed
+    const speed = ctx.game.stats.get(ctx.entity, 'speed')
 
-    game.set(entity, 'velocity', { x: vx, y: vy })
+    vx *= speed
+    vy *= speed
+
+    ctx.game.set(ctx.entity, 'velocity', { x: vx, y: vy })
+  },
+  
+  on_deactivate: (ctx) => {
+    ctx.game.set(ctx.entity, 'velocity', { x: 0, y: 0 })
   }
 }
 

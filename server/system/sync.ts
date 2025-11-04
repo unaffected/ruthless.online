@@ -17,14 +17,8 @@ const CONFIG: Array<{
   packet: 'rotation',
   threshold: 0.01,
 }, {
-  packet: 'health',
+  packet: 'stats',
   threshold: 1.0,
-}, {
-  packet: 'energy',
-  threshold: 1.0,
-}, {
-  packet: 'movement',
-  threshold: 0.1,
 }, {
   packet: 'projectile',
   threshold: 1.0,

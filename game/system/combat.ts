@@ -1,7 +1,10 @@
-import { type System } from '@/game'
+import type { Game, System } from '@/game'
+import type { HitHandler, HIT_HANDLER } from '@/game/config/combat'
 import event from '@/game/system/event'
 import collision from '@/game/system/collision'
 import handlers from '@/game/combat'
+
+export { type HitHandler, type HIT_HANDLER, type HitHandlers } from '@/game/config/combat'
 
 declare module '@/game/system/event' {
   interface Events {
@@ -24,20 +27,10 @@ declare module '@/game' {
   interface Game {
     combat: {
       handlers: Map<string, HitHandler>
-      apply_damage: (attacker: number, target: number, damage: number, source?: string) => boolean
+      apply_damage: (attacker: number, target: number, damage: number) => void
     }
   }
 }
-
-export type HitHandler<K extends HIT_HANDLER = HIT_HANDLER> = {
-  id: K
-  check: (game: any, entityA: number, entityB: number) => boolean
-  execute: (game: any, entityA: number, entityB: number) => void
-}
-
-export type HIT_HANDLER = keyof HitHandlers
-
-export interface HitHandlers {}
 
 export const system: System = {
   id: 'game:combat' as const,
@@ -46,36 +39,11 @@ export const system: System = {
     game.combat = {
       handlers: new Map(),
       
-      apply_damage: (attacker, target, damage, source) => {
-        if (typeof game.server === 'undefined') return false
-        
-        const health = game.get(target, 'health')
-        
-        if (!health) return false
-        
-        const new_health = Math.max(0, health.current - damage)
-        
-        game.set(target, 'health', { current: new_health })
-        
-        game.emit('game:combat:damage', {
-          attacker,
-          target,
-          damage,
-          new_health,
-          source: source ?? 'unknown'
+      apply_damage: (attacker, target, damage) => {
+        game.effect.apply('damage', target, {
+          source: attacker,
+          value: damage
         })
-        
-        if (new_health <= 0) {
-          game.despawn(target)
-          
-          game.emit('game:combat:kill', {
-            attacker,
-            target,
-            source: source ?? 'unknown'
-          })
-        }
-        
-        return true
       }
     }
     

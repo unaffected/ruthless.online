@@ -1,18 +1,32 @@
-import type { Action } from '@/game/system/action'
+import type { Action } from '@/game/config/action'
+import { ACTION_TYPE } from '@/game/config/action'
 import type { State } from '@/game/utility/input'
 
-declare module '@/game/system/action' { interface Actions { shoot: ShootAction } }
+declare module '@/game/config/action' {
+  interface Actions {
+    shoot: ShootAction
+  }
+}
 
 export type ShootAction = State
 
 export const action: Action<'shoot'> = {
   id: 'shoot',
-  cooldown: 300,
+  type: ACTION_TYPE.ACTIVATED,
+  startup_duration: 0,
+  active_duration: 100,
+  recovery_duration: 100,
+  cooldown_duration: 300,
   energy_cost: 6,
-  execute: (game, entity, params) => {
-    const position = game.get(entity, 'position')
-    
+  
+  on_active: (ctx) => {
+    const position = ctx.game.get(ctx.entity, 'position')
+
     if (!position) return
+
+    const params = ctx.params as State
+
+    if (!params) return
     
     const target_x = params.MOUSE_X
     const target_y = params.MOUSE_Y
@@ -27,26 +41,30 @@ export const action: Action<'shoot'> = {
     const direction_y = dy / distance
     
     const speed = 10.0
-    const projectile_entity = game.spawn()
+    const projectile_entity = ctx.game.spawn()
     
-    game.add(projectile_entity, 'sync')
-    game.add(projectile_entity, 'position', { 
+    ctx.game.add(projectile_entity, 'sync')
+    
+    ctx.game.add(projectile_entity, 'position', { 
       x: position.x + direction_x * 25,
       y: position.y + direction_y * 25
     })
-    game.add(projectile_entity, 'velocity', { 
+
+    ctx.game.add(projectile_entity, 'velocity', { 
       x: direction_x * speed,
       y: direction_y * speed
     })
-    game.add(projectile_entity, 'rotation', { value: Math.atan2(dy, dx) })
-    game.add(projectile_entity, 'projectile', {
-      owner: entity,
+
+    ctx.game.add(projectile_entity, 'rotation', { value: Math.atan2(dy, dx) })
+
+    ctx.game.add(projectile_entity, 'projectile', {
+      owner: ctx.entity,
       damage: 10.0,
       lifetime: 3000.0,
       spawned_at: performance.now()
     })
     
-    game.collider.spawn('circle', projectile_entity, {
+    ctx.game.collider.spawn('circle', projectile_entity, {
       radius: 5,
       x: position.x + direction_x * 25,
       y: position.y + direction_y * 25,

@@ -40,14 +40,19 @@ export const system: System<PhysicsOptions> = {
     
     Matter.Engine.update(game.physics.engine, delta)
     
+    const positions = game.components.position
+    const pos_x = positions.x
+    const pos_y = positions.y
+    
     for (const body of world.bodies) {
       const entity = body.plugin.entity as number
       
       if (body.isStatic) continue
-
       if (!game.has(entity, 'position')) continue
       
-      game.set(entity, 'position', { x: body.position.x, y: body.position.y })
+      const idx = entity & 0xFFFFF
+      pos_x[idx] = body.position.x
+      pos_y[idx] = body.position.y
     }
  
     if (game.frame % options.flush_rate !== 0) return

@@ -89,16 +89,40 @@ export const system: System = {
       
       const packed_buffer = new ArrayBuffer(6)
       const packed_view = new DataView(packed_buffer)
+      
       packed_view.setUint16(0, component.packed, true)
       packed_view.setInt16(2, component.mouse_x, true)
       packed_view.setInt16(4, component.mouse_y, true)
       
       const state = input.unpack(packed_buffer)
 
-      game.action('move', entity, state)
+      const has_movement = state.UP || state.DOWN || state.LEFT || state.RIGHT
+      
+      if (has_movement) {
+        game.action.activate('move', entity, state)
+      } else {
+        const move_state = game.action.state('move', entity)
+
+        if (move_state && move_state.phase !== 0) {
+          game.action.cancel('move', entity)
+        }
+      }
+      
+      if (state.ACTION_3 && has_movement) {
+        game.action.activate('sprint', entity, state)
+      } else {
+        const sprint_state = game.action.state('sprint', entity)
+        if (sprint_state && sprint_state.phase !== 0) {
+          game.action.cancel('sprint', entity)
+        }
+      }
       
       if (state.ACTION_1) {
-        game.action('shoot', entity, state)
+        game.action.activate('shoot', entity, state)
+      }
+      
+      if (state.ACTION_2) {
+        game.action.activate('dash', entity, state)
       }
     }
   }

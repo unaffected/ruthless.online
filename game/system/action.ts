@@ -1,80 +1,62 @@
-import { type Game, type System } from '@/game'
+import type { Game, System } from '@/game'
 import actions from '@/game/action'
 import event from '@/game/system/event'
+import * as Action from '@/game/utility/action'
 
-export type ACTION = keyof Actions
+export { 
+  ACTION_TYPE,
+  ACTION_PHASE,
+  ACTION_CONDITION,
+  type ActionType,
+  type ActionPhase,
+  type ActionCondition,
+  type ActionState,
+  type ActionContext,
+  type ACTION,
+  type Action,
+  type Actions
+} from '@/game/config/action'
 
-export type Action<K extends ACTION = ACTION> = {
-  id: K
-  cooldown?: number
-  energy_cost?: number
-  execute: (game: Game, entity: number, params: Actions[K]) => void
+import type { ActionState, Action as ActionDef } from '@/game/config/action'
+
+declare module '@/game' {
+  interface Game {
+    action: {
+      definitions: Map<string, ActionDef>
+      states: Map<number, Map<string, ActionState>>
+      activate: (id: string, entity: number, params?: any) => boolean
+      cancel: (id: string, entity: number) => boolean
+      state: (id: string, entity: number) => ActionState | undefined
+    }
+  }
 }
 
-export interface Actions {}
-
-declare module '@/game' { 
-  interface Game {
-    actions: Map<string, Action>
-    cooldowns: Map<number, Map<string, number>>
-    action: <K extends keyof Actions>(id: K, entity: number, params: Actions[K]) => boolean
+declare module '@/game/system/event' {
+  interface Events {
+    'game:action:activated': { entity: number, action_id: string }
+    'game:action:cancelled': { entity: number, action_id: string }
+    'game:action:phase_changed': { entity: number, action_id: string, phase: number }
   }
 }
 
 export const system: System = {
-  id: 'game:action' as const,
+  id: 'game:action',
   dependencies: [event],
-  install: async (game) => {
-    game.actions = new Map()
-    game.cooldowns = new Map()
 
-    game.action = (id, entity, params) => {
-      const action = game.actions.get(id)
-      
-      if (!action) {
-        console.warn(`[action] Action '${id}' not found`)
-        return false
-      }
-      
-      const now = performance.now()
-      
-      if (action.cooldown !== undefined) {
-        let entity_cooldowns = game.cooldowns.get(entity)
-        
-        if (!entity_cooldowns) {
-          entity_cooldowns = new Map()
-          game.cooldowns.set(entity, entity_cooldowns)
-        }
-        
-        const last_used = entity_cooldowns.get(id) ?? 0
-        const elapsed = now - last_used
-        
-        if (elapsed < action.cooldown) {
-          return false
-        }
-      }
-      
-      if (action.energy_cost !== undefined) {
-        const energy = game.get(entity, 'energy')
-        
-        if (!energy || energy.current < action.energy_cost) {
-          return false
-        }
-        
-        game.set(entity, 'energy', { current: energy.current - action.energy_cost })
-      }
-      
-      action.execute(game, entity, params)
-      
-      if (action.cooldown !== undefined) {
-        const entity_cooldowns = game.cooldowns.get(entity)!
-        entity_cooldowns.set(id, now)
-      }
-      
-      return true
+  install: async (game) => {
+    game.action = {
+      definitions: new Map(),
+      states: new Map(),
+      activate: (id, entity, params) => Action.activate(game, id, entity, params),
+      cancel: (id, entity) => Action.cancel(game, id, entity),
+      state: (id, entity) => game.action.states.get(entity)?.get(id),
     }
 
-    actions.forEach((action) => { game.actions.set(action.id, action as Action) })
+    actions.forEach((action) => game.action.definitions.set(String(action.id), action as ActionDef))
+  },
+
+  tick: async (game, delta) => {
+    Action.tick(game, delta)
   }
 }
 

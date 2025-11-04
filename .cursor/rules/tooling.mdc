@@ -177,20 +177,6 @@ import { readFileSync } from 'node:fs'
 const data = readFileSync('data.json', 'utf-8')
 ```
 
-### SQLite
-
-```typescript
-// ✅ Good - Use bun:sqlite
-import { Database } from 'bun:sqlite'
-
-const db = new Database('data.db')
-const query = db.query('SELECT * FROM users WHERE id = ?')
-const user = query.get(123)
-
-// ❌ Bad - Don't use better-sqlite3
-import Database from 'better-sqlite3'
-```
-
 ### Process Execution
 
 ```typescript
