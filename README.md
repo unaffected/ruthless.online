@@ -1,7 +1,5 @@
 # Ruthless
 
-A high-performance 2D multiplayer game built with a custom Entity-Component-System (ECS) architecture.
-
 ## Architecture
 
 Ruthless uses a three-tier architecture with clear separation of concerns:
